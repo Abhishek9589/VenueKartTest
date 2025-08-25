@@ -7,6 +7,7 @@ import { NotificationContainer, useNotifications } from '@/components/ui/notific
 import { useAuth } from '../contexts/AuthContext';
 import AddVenueForm from '@/components/AddVenueForm';
 import EditVenueForm from '@/components/EditVenueForm';
+import notificationService from '../services/notificationService';
 import {
   Building,
   Home,
@@ -31,31 +32,57 @@ const getAuthHeader = () => {
 };
 
 const apiCall = async (url, options = {}) => {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(),
-      ...options.headers
-    }
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+        ...options.headers
+      }
+    });
 
-  if (!response.ok) {
-    let errorMessage = `API call failed: ${response.statusText}`;
+    // Read the response body once and store it
+    let responseData;
+    let errorMessage = `HTTP ${response.status}`;
 
     try {
-      const errorData = await response.json();
-      if (errorData.error) {
-        errorMessage = errorData.error;
-      }
-    } catch (e) {
-      // If we can't parse the response as JSON, use the status text
+      responseData = await response.json();
+    } catch (parseError) {
+      // Response is not valid JSON
+      responseData = null;
+      console.error('Failed to parse response as JSON:', parseError);
     }
 
-    throw new Error(errorMessage);
-  }
+    if (!response.ok) {
+      // Try to get detailed error from parsed response data
+      if (responseData && responseData.error) {
+        errorMessage = responseData.error;
+      } else if (responseData && responseData.message) {
+        errorMessage = responseData.message;
+      } else {
+        errorMessage = `${errorMessage}: ${response.statusText || 'Unknown error'}`;
+      }
 
-  return response.json();
+      console.error(`API call failed for ${url}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        method: options.method || 'GET',
+        responseData
+      });
+
+      throw new Error(errorMessage);
+    }
+
+    return responseData;
+  } catch (error) {
+    // Handle network errors or other fetch failures
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to server');
+    }
+    throw error;
+  }
 };
 
 export default function AdminDashboard() {
@@ -714,9 +741,12 @@ export default function AdminDashboard() {
       await loadDashboardStats();
 
       setShowAddVenueForm(false);
+      showSuccess('Venue added successfully!');
     } catch (error) {
       console.error('Error adding venue:', error);
-      alert('Failed to add venue. Please try again.');
+      showError(error.message || 'Failed to add venue. Please try again.');
+      // Don't close the form on error - let user fix issues and retry
+      throw error; // Re-throw so AddVenueForm can handle it
     } finally {
       setLoading(false);
     }
@@ -790,6 +820,9 @@ export default function AdminDashboard() {
         loadDashboardStats(),
         loadInquiryCount()
       ]);
+
+      // Trigger notification updates for affected customers
+      notificationService.triggerUpdate();
 
       showSuccess(`Booking ${actionText}ed successfully!`);
     } catch (error) {
@@ -890,76 +923,137 @@ export default function AdminDashboard() {
               <Menu className="h-6 w-6" />
             </Button>
             <div className="flex items-center space-x-4">
-              {/* Notification Bell */}
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={async () => {
-                    if (!showNotifications) {
-                      await loadInquiries();
-                    }
-                    setShowNotifications(!showNotifications);
-                  }}
-                  className="relative"
-                >
-                  <Bell className="h-5 w-5" />
-                  {inquiryCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                      {inquiryCount > 99 ? '99+' : inquiryCount}
-                    </span>
-                  )}
-                </Button>
+              {/* Enhanced Notification Bell */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={async () => {
+                  if (!showNotifications) {
+                    await loadInquiries();
+                  }
+                  setShowNotifications(!showNotifications);
+                }}
+                className={`relative transition-all duration-300 ease-in-out transform hover:scale-110 ${
+                  inquiryCount > 0
+                    ? 'text-venue-purple hover:text-venue-indigo hover:bg-venue-lavender/20'
+                    : 'text-gray-500 hover:text-venue-indigo hover:bg-venue-lavender/10'
+                } ${showNotifications ? 'bg-venue-lavender/30 text-venue-indigo' : ''}`}
+              >
+                <Bell className={`h-5 w-5 transition-all duration-300 ${
+                  inquiryCount > 0 ? 'animate-pulse' : ''
+                }`} />
 
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                    <div className="p-4 border-b border-gray-200">
-                      <h3 className="font-semibold text-gray-900">Venue Inquiries</h3>
-                      <p className="text-sm text-gray-600">{inquiryCount} pending inquiries</p>
+                {/* Enhanced notification badge */}
+                {inquiryCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium shadow-lg animate-bounce">
+                    {inquiryCount > 99 ? '99+' : inquiryCount}
+                  </span>
+                )}
+
+                {/* Pulse effect for new notifications */}
+                {inquiryCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-400 rounded-full h-5 w-5 animate-ping opacity-75"></span>
+                )}
+              </Button>
+
+              {/* Enhanced Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-3 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 transform transition-all duration-300 ease-out scale-100 opacity-100">
+                  {/* Header with gradient */}
+                  <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-venue-indigo to-venue-purple text-white rounded-t-xl">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-white flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        Venue Inquiries
+                      </h3>
+                      <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                        {inquiryCount} pending
+                      </span>
                     </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {inquiries.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
-                          No pending inquiries
-                        </div>
-                      ) : (
-                        inquiries.slice(0, 5).map((inquiry) => (
-                          <div key={inquiry.id} className="p-3 border-b border-gray-100 hover:bg-gray-50">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <p className="font-medium text-sm text-gray-900">{inquiry.customer_name}</p>
-                                <p className="text-xs text-gray-600">{inquiry.venue_name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(inquiry.event_date).toLocaleDateString()} • {inquiry.guest_count} guests
-                                </p>
-                              </div>
-                              <span className="text-xs text-venue-indigo font-medium">
-                                ₹{inquiry.amount.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {inquiries.length > 0 && (
-                      <div className="p-3 border-t border-gray-200">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
+                    <p className="text-sm text-white/90 mt-1">
+                      {inquiryCount === 0 ? 'All caught up!' : `You have ${inquiryCount} new ${inquiryCount === 1 ? 'inquiry' : 'inquiries'}`}
+                    </p>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div className="max-h-80 overflow-y-auto">
+                    {inquiries.length === 0 ? (
+                      <div className="p-8 text-center text-gray-500">
+                        <Bell className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p className="font-medium">No pending inquiries</p>
+                        <p className="text-xs text-gray-400 mt-1">New inquiries will appear here</p>
+                      </div>
+                    ) : (
+                      inquiries.slice(0, 6).map((inquiry, index) => (
+                        <div
+                          key={inquiry.id}
+                          className="p-4 border-b border-gray-100 hover:bg-gradient-to-r hover:from-venue-lavender/20 hover:to-venue-lavender/10 transition-all duration-200 cursor-pointer group"
                           onClick={() => {
                             setActiveSection('bookings');
                             setShowNotifications(false);
                           }}
                         >
-                          View All Inquiries
-                        </Button>
-                      </div>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="w-8 h-8 bg-gradient-to-r from-venue-indigo to-venue-purple rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                  {inquiry.customer_name.charAt(0).toUpperCase()}
+                                </div>
+                                <p className="font-semibold text-sm text-gray-900 group-hover:text-venue-indigo transition-colors">
+                                  {inquiry.customer_name}
+                                </p>
+                              </div>
+                              <p className="text-xs text-gray-600 mb-1 ml-10">{inquiry.venue_name}</p>
+                              <p className="text-xs text-gray-500 ml-10 flex items-center gap-1">
+                                <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                                {new Date(inquiry.event_date).toLocaleDateString()}
+                                <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mx-1"></span>
+                                {inquiry.guest_count} guests
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-bold text-venue-indigo">
+                                ₹{inquiry.amount.toLocaleString()}
+                              </span>
+                              <div className="text-xs text-gray-400 mt-1">
+                                {index < 3 && <span className="text-green-500 font-medium">New</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
-                )}
-              </div>
+
+                  {/* Footer with action buttons */}
+                  {inquiries.length > 0 && (
+                    <div className="p-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-venue-indigo hover:bg-venue-purple text-white transition-all duration-200"
+                          onClick={() => {
+                            setActiveSection('bookings');
+                            setShowNotifications(false);
+                          }}
+                        >
+                          View All ({inquiries.length})
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="px-4 hover:bg-venue-lavender hover:border-venue-indigo hover:text-venue-indigo transition-all duration-200"
+                          onClick={() => setShowNotifications(false)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
               <span className="text-sm text-gray-600">
                 Welcome back, {user?.name || 'Admin'}

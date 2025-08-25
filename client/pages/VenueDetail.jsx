@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { scrollToTop } from '@/lib/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Notification } from '@/components/ui/notification';
+import { FloatingMessage } from '@/components/ui/floating-message';
 import { useFavorites } from '../hooks/useFavorites';
 import {
   MapPin,
@@ -51,6 +52,7 @@ const apiCall = async (url, options = {}) => {
 
 export default function VenueDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { toggleFavorite, isFavorite } = useFavorites();
   
@@ -73,6 +75,7 @@ export default function VenueDetail() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showFloatingMessage, setShowFloatingMessage] = useState(false);
 
 
   useEffect(() => {
@@ -174,11 +177,8 @@ export default function VenueDetail() {
         console.log('API not available, simulating inquiry submission');
       }
 
-      // Show success notification
-      setNotification({
-        type: 'success',
-        message: 'Your inquiry has been sent successfully! The venue owner and our team have been notified.'
-      });
+      // Show floating success message
+      setShowFloatingMessage(true);
 
       // Reset form
       setShowBookingForm(false);
@@ -189,6 +189,12 @@ export default function VenueDetail() {
         guestCount: '',
         specialRequests: ''
       }));
+
+      // Redirect to home after a short delay (let the user see the success message)
+      setTimeout(() => {
+        scrollToTop();
+        navigate('/');
+      }, 3000);
 
     } catch (error) {
       console.error('Error submitting inquiry:', error);
@@ -572,6 +578,22 @@ export default function VenueDetail() {
           </div>
         </div>
       </div>
+
+      {/* Floating success message */}
+      <FloatingMessage
+        isVisible={showFloatingMessage}
+        onClose={() => {
+          setShowFloatingMessage(false);
+          // If user closes manually, still redirect to home
+          setTimeout(() => {
+            scrollToTop();
+            navigate('/');
+          }, 500);
+        }}
+        title="Thank you!"
+        message="You will be contacted or notified soon regarding your response."
+        type="success"
+      />
     </div>
   );
 }

@@ -16,78 +16,119 @@ class AuthService {
         body: JSON.stringify({ email, password }),
       });
 
-      let data;
+      // Read response body once
+      let data = null;
       try {
         data = await response.json();
       } catch (jsonError) {
-        throw new Error('Login failed');
+        console.error('Failed to parse login response as JSON:', jsonError);
+        data = null;
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        const errorMessage = data && data.error ? data.error : 'Login failed';
+        throw new Error(errorMessage);
       }
 
       // Store tokens
       this.setTokens(data.accessToken, data.refreshToken);
       return data;
     } catch (error) {
-      throw new Error('Login failed');
+      console.error('Login error:', error);
+      throw error;
     }
   }
 
   async register(email, name, userType = 'customer', password = null, mobileNumber = null) {
-    const response = await fetch(`${API_BASE}/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, name, userType, password, mobileNumber }),
-    });
+    try {
+      const response = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, name, userType, password, mobileNumber }),
+      });
 
-    const data = await response.json();
+      // Read response body once
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse register response as JSON:', jsonError);
+        data = null;
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Registration failed');
+      if (!response.ok) {
+        const errorMessage = data && data.error ? data.error : 'Registration failed';
+        throw new Error(errorMessage);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     }
-
-    return data;
   }
 
   async verifyOTP(email, otp) {
-    const response = await fetch(`${API_BASE}/verify-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, otp }),
-    });
+    try {
+      const response = await fetch(`${API_BASE}/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otp }),
+      });
 
-    const data = await response.json();
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse verifyOTP response as JSON:', jsonError);
+        data = null;
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || 'OTP verification failed');
+      if (!response.ok) {
+        const errorMessage = data && data.error ? data.error : 'OTP verification failed';
+        throw new Error(errorMessage);
+      }
+      // Store tokens
+      this.setTokens(data.accessToken, data.refreshToken);
+      return data;
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      throw error;
     }
-    // Store tokens
-    this.setTokens(data.accessToken, data.refreshToken);
-    return data;
   }
 
   async resendOTP(email) {
-    const response = await fetch(`${API_BASE}/resend-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    });
+    try {
+      const response = await fetch(`${API_BASE}/resend-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
 
-    const data = await response.json();
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse resendOTP response as JSON:', jsonError);
+        data = null;
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to resend OTP');
+      if (!response.ok) {
+        const errorMessage = data && data.error ? data.error : 'Failed to resend OTP';
+        throw new Error(errorMessage);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Resend OTP error:', error);
+      throw error;
     }
-
-    return data;
   }
 
   async getCurrentUser() {
@@ -141,7 +182,15 @@ class AuthService {
         return false;
       }
 
-      const data = await response.json();
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse refresh response as JSON:', jsonError);
+        this.clearTokens();
+        return false;
+      }
+
       this.setTokens(data.accessToken, this.refreshToken);
       return true;
     } catch (error) {
@@ -190,39 +239,63 @@ class AuthService {
   }
 
   async forgotPassword(email) {
-    const response = await fetch(`${API_BASE}/forgot-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    });
+    try {
+      const response = await fetch(`${API_BASE}/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
 
-    const data = await response.json();
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse forgotPassword response as JSON:', jsonError);
+        data = null;
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to send reset email');
+      if (!response.ok) {
+        const errorMessage = data && data.error ? data.error : 'Failed to send reset email';
+        throw new Error(errorMessage);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw error;
     }
-
-    return data;
   }
 
   async resetPassword(email, otp, newPassword) {
-    const response = await fetch(`${API_BASE}/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, otp, newPassword }),
-    });
+    try {
+      const response = await fetch(`${API_BASE}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otp, newPassword }),
+      });
 
-    const data = await response.json();
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse resetPassword response as JSON:', jsonError);
+        data = null;
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to reset password');
+      if (!response.ok) {
+        const errorMessage = data && data.error ? data.error : 'Failed to reset password';
+        throw new Error(errorMessage);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
     }
-
-    return data;
   }
 
   // Handle OAuth callback tokens from URL

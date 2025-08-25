@@ -129,33 +129,39 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
   const validateForm = () => {
     const newErrors = {};
 
+    // Required fields validation
     if (!formData.venueName.trim()) {
       newErrors.venueName = 'Venue name is required';
     }
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     }
-    if (!formData.venueType) {
-      newErrors.venueType = 'Venue type is required';
-    }
     if (!formData.area) {
       newErrors.area = 'Area is required';
     }
-    if (!formData.footfall || formData.footfall <= 0) {
-      newErrors.footfall = 'Valid footfall capacity is required';
+
+    // Footfall validation
+    const footfall = parseInt(formData.footfall);
+    if (!formData.footfall || isNaN(footfall) || footfall <= 0) {
+      newErrors.footfall = 'Footfall capacity must be a number greater than 0';
     }
-    if (!formData.priceMin || formData.priceMin <= 0) {
-      newErrors.priceMin = 'Valid minimum price is required';
+
+    // Price validation
+    const priceMin = parseInt(formData.priceMin);
+    const priceMax = parseInt(formData.priceMax);
+
+    if (!formData.priceMin || isNaN(priceMin) || priceMin <= 0) {
+      newErrors.priceMin = 'Minimum price must be a number greater than 0';
     }
-    if (!formData.priceMax || formData.priceMax <= 0) {
-      newErrors.priceMax = 'Valid maximum price is required';
+    if (!formData.priceMax || isNaN(priceMax) || priceMax <= 0) {
+      newErrors.priceMax = 'Maximum price must be a number greater than 0';
     }
-    if (formData.priceMin && formData.priceMax && parseInt(formData.priceMin) >= parseInt(formData.priceMax)) {
+    if (!isNaN(priceMin) && !isNaN(priceMax) && priceMin >= priceMax) {
       newErrors.priceMax = 'Maximum price must be greater than minimum price';
     }
-    if (formData.facilities.filter(f => f.trim()).length === 0) {
-      newErrors.facilities = 'At least one facility is required';
-    }
+
+    // Note: Images and facilities are now optional (no validation required)
+    // Venue type is also optional (not required by server)
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -266,14 +272,20 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
         let imageUrls = await uploadImagesToCloudinary(formData.images);
 
         const venueData = {
-          ...formData,
-          images: imageUrls, // Use Cloudinary URLs instead of base64
-          facilities: formData.facilities.filter(f => f.trim()),
+          venueName: formData.venueName,
+          description: formData.description,
+          location: `${formData.area}, Pune`,
           footfall: parseInt(formData.footfall),
           priceMin: parseInt(formData.priceMin),
           priceMax: parseInt(formData.priceMax),
-          location: `${formData.area}, Pune`
+          images: imageUrls, // Use Cloudinary URLs instead of base64
+          facilities: formData.facilities.filter(f => f.trim())
         };
+
+        // Add optional fields only if they have values
+        if (formData.venueType && formData.venueType.trim()) {
+          venueData.venueType = formData.venueType;
+        }
 
         await onSubmit(venueData);
         // Reset form only after successful submission
@@ -356,13 +368,13 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Venue Type *
+                  Venue Type (Optional)
                 </label>
                 <Input
                   value={formData.venueType}
                   onChange={(e) => handleInputChange('venueType', e.target.value)}
-                  placeholder="Type venue type manually..."
-                  className={`w-full h-10 ${errors.venueType ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500`}
+                  placeholder="Type venue type manually (optional)..."
+                  className={`w-full h-10 border-gray-300 focus:border-indigo-500`}
                 />
                 {errors.venueType && (
                   <p className="text-red-500 text-sm mt-1">{errors.venueType}</p>
@@ -437,7 +449,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
             {/* Facilities */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Facilities *
+                Facilities (Optional)
               </label>
               <div className="space-y-2">
                 {formData.facilities.map((facility, index) => (
@@ -445,8 +457,8 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                     <Input
                       value={facility}
                       onChange={(e) => handleFacilityChange(index, e.target.value)}
-                      placeholder="Enter facility (e.g., AC, Parking, Catering)"
-                      className="flex-1 h-10 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Enter facility (e.g., AC, Parking, Catering) - Optional"
+                  className="flex-1 h-10 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                     />
                     {formData.facilities.length > 1 && (
                       <Button

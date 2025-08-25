@@ -298,20 +298,25 @@ router.post('/inquiry', authenticateToken, async (req, res) => {
 
     const venue = venues[0];
 
-    // Create inquiry record
+    // Create booking record (which serves as an inquiry until accepted/rejected)
+    // Calculate estimated amount based on venue price
+    const estimatedAmount = venue.price_per_day || venue.price_min || 50000; // Default fallback
+
     try {
-      await pool.execute(`
-        INSERT INTO venue_inquiries (
+      const [bookingResult] = await pool.execute(`
+        INSERT INTO bookings (
           venue_id, customer_id, customer_name, customer_email, customer_phone,
-          event_date, event_type, guest_count, special_requirements, inquiry_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          event_date, event_type, guest_count, amount, special_requirements, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `, [
         venue_id, customerId, fullName, email, phone,
-        event_date, eventType, guestCount, user_details.specialRequests || null
+        event_date, eventType, guestCount, estimatedAmount, user_details.specialRequests || null
       ]);
+
+      console.log('Booking/inquiry record created with ID:', bookingResult.insertId);
     } catch (dbError) {
-      // If table doesn't exist, continue without database logging
-      console.log('Inquiry table not available, proceeding with email notifications');
+      console.error('Error creating booking record:', dbError);
+      // Continue with email notifications even if DB insert fails
     }
 
     // Prepare inquiry data for emails
@@ -361,6 +366,67 @@ router.post('/inquiry', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error processing venue inquiry:', error);
     res.status(500).json({ error: 'Failed to process inquiry' });
+  }
+});
+
+// Get customer notifications for inquiry updates
+router.get('/customer/notifications', authenticateToken, async (req, res) => {
+  try {
+    const customerId = req.user.id;
+
+    // Get inquiry status updates for the customer
+    const [notifications] = await pool.execute(`
+      SELECT
+        b.id,
+        b.venue_id,
+        v.name as venue_name,
+        b.event_date,
+        b.guest_count,
+        b.amount,
+        b.status,
+        b.updated_at,
+        'inquiry_status' as notification_type,
+        CASE
+          WHEN b.status = 'confirmed' THEN CONCAT('Your inquiry for ', v.name, ' has been accepted!')
+          WHEN b.status = 'cancelled' THEN CONCAT('Your inquiry for ', v.name, ' has been declined.')
+          ELSE CONCAT('Your inquiry for ', v.name, ' is pending review.')
+        END as message
+      FROM bookings b
+      JOIN venues v ON b.venue_id = v.id
+      WHERE b.customer_id = ?
+        AND b.updated_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
+      ORDER BY b.updated_at DESC
+      LIMIT 10
+    `, [customerId]);
+
+    // Mark notifications as read (add a read_at timestamp if needed)
+    // For now, we'll just return the notifications
+
+    res.json(notifications);
+  } catch (error) {
+    console.error('Error fetching customer notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// Get unread notification count for customer
+router.get('/customer/notification-count', authenticateToken, async (req, res) => {
+  try {
+    const customerId = req.user.id;
+
+    // Count recent status updates (last 7 days) that user might not have seen
+    const [countResult] = await pool.execute(`
+      SELECT COUNT(*) as unread_count
+      FROM bookings
+      WHERE customer_id = ?
+        AND status IN ('confirmed', 'cancelled')
+        AND updated_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+    `, [customerId]);
+
+    res.json({ unreadCount: countResult[0].unread_count });
+  } catch (error) {
+    console.error('Error fetching notification count:', error);
+    res.status(500).json({ error: 'Failed to fetch notification count' });
   }
 });
 

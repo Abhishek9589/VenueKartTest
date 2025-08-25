@@ -178,52 +178,91 @@ router.post('/', authenticateToken, async (req, res) => {
     const ownerId = req.user.id;
     const { venueName, description, location, footfall, priceMin, priceMax, images, facilities } = req.body;
 
+    console.log('Received venue creation request:', {
+      ownerId,
+      venueName,
+      description,
+      location,
+      footfall,
+      priceMin,
+      priceMax,
+      imageCount: Array.isArray(images) ? images.length : 0,
+      facilityCount: Array.isArray(facilities) ? facilities.length : 0
+    });
+
     // Validation
-    if (!venueName || !description || !location || !footfall || !priceMin || !priceMax || !images || !facilities) {
-      return res.status(400).json({ error: 'All fields are required' });
+    if (!venueName || !description || !location || !footfall || priceMin === undefined || priceMax === undefined) {
+      return res.status(400).json({ error: 'Required fields: venueName, description, location, footfall, priceMin, priceMax' });
     }
-    
-    if (images.length < 4) {
-      return res.status(400).json({ error: 'Minimum 4 images are required' });
+
+    if (parseInt(footfall) <= 0) {
+      return res.status(400).json({ error: 'Footfall capacity must be greater than 0' });
     }
-    
+
+    if (parseInt(priceMin) <= 0 || parseInt(priceMax) <= 0) {
+      return res.status(400).json({ error: 'Price range must be greater than 0' });
+    }
+
+    if (parseInt(priceMin) >= parseInt(priceMax)) {
+      return res.status(400).json({ error: 'Maximum price must be greater than minimum price' });
+    }
+
+    // Images are optional - if provided, validate them
+    const imageUrls = Array.isArray(images) ? images.filter(img => img && img.trim()) : [];
+
+    // Facilities are optional - if provided, validate them
+    const facilityList = Array.isArray(facilities) ? facilities.filter(f => f && f.trim()) : [];
+
+    // Check database connection
+    try {
+      await pool.execute('SELECT 1');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError.message);
+      return res.status(503).json({
+        error: 'Database service unavailable. Please connect to a database service like Neon or set up MySQL.'
+      });
+    }
+
     // Start transaction
     const connection = await pool.getConnection();
     await connection.beginTransaction();
-    
+
     try {
       // Insert venue with price range
       const averagePrice = (parseInt(priceMin) + parseInt(priceMax)) / 2;
       const [venueResult] = await connection.execute(`
         INSERT INTO venues (owner_id, name, description, location, capacity, price_per_day, price_min, price_max)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [ownerId, venueName, description, location, footfall, averagePrice, priceMin, priceMax]);
-      
+      `, [ownerId, venueName, description, location, parseInt(footfall), averagePrice, parseInt(priceMin), parseInt(priceMax)]);
+
       const venueId = venueResult.insertId;
-      
-      // Insert images
-      for (let i = 0; i < images.length; i++) {
-        await connection.execute(`
-          INSERT INTO venue_images (venue_id, image_url, is_primary)
-          VALUES (?, ?, ?)
-        `, [venueId, images[i], i === 0]);
+
+      // Insert images if provided
+      if (imageUrls.length > 0) {
+        for (let i = 0; i < imageUrls.length; i++) {
+          await connection.execute(`
+            INSERT INTO venue_images (venue_id, image_url, is_primary)
+            VALUES (?, ?, ?)
+          `, [venueId, imageUrls[i], i === 0]);
+        }
       }
-      
-      // Insert facilities
-      for (const facility of facilities) {
-        if (facility.trim()) {
+
+      // Insert facilities if provided
+      if (facilityList.length > 0) {
+        for (const facility of facilityList) {
           await connection.execute(`
             INSERT INTO venue_facilities (venue_id, facility_name)
             VALUES (?, ?)
-          `, [venueId, facility.trim()]);
+          `, [venueId, facility]);
         }
       }
-      
+
       await connection.commit();
-      
-      res.status(201).json({ 
-        message: 'Venue created successfully', 
-        venueId: venueId 
+
+      console.log('Venue created successfully with ID:', venueId);
+      res.status(201).json({
+        message: 'Venue created successfully',
+        venueId: venueId
       });
     } catch (error) {
       await connection.rollback();
@@ -233,7 +272,21 @@ router.post('/', authenticateToken, async (req, res) => {
     }
   } catch (error) {
     console.error('Error creating venue:', error);
-    res.status(500).json({ error: 'Failed to create venue' });
+
+    // Provide specific error messages based on error type
+    if (error.code === 'ECONNREFUSED' || error.code === 'ER_ACCESS_DENIED_ERROR') {
+      return res.status(503).json({
+        error: 'Database connection failed. Please ensure database is running and credentials are correct.'
+      });
+    } else if (error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(503).json({
+        error: 'Database tables not found. Please initialize the database.'
+      });
+    } else {
+      return res.status(500).json({
+        error: `Failed to create venue: ${error.message}`
+      });
+    }
   }
 });
 

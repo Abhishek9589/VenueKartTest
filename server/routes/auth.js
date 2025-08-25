@@ -103,6 +103,16 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
+    // Check database connection
+    try {
+      await pool.execute('SELECT 1');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError.message);
+      return res.status(503).json({
+        error: 'Database service unavailable. Please connect to a database service like Neon or set up MySQL.'
+      });
+    }
+
     // Check if user already exists
     const [existing] = await pool.execute(
       'SELECT * FROM users WHERE email = ?',
@@ -149,7 +159,21 @@ router.post('/register', async (req, res) => {
     res.json({ message: 'Verification code sent to your email' });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+
+    // Provide specific error messages based on error type
+    if (error.code === 'ECONNREFUSED' || error.code === 'ER_ACCESS_DENIED_ERROR') {
+      return res.status(503).json({
+        error: 'Database connection failed. Please ensure database is running and credentials are correct.'
+      });
+    } else if (error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(503).json({
+        error: 'Database tables not found. Please initialize the database.'
+      });
+    } else {
+      return res.status(500).json({
+        error: `Registration failed: ${error.message}`
+      });
+    }
   }
 });
 
@@ -341,6 +365,16 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    // Check database connection
+    try {
+      await pool.execute('SELECT 1');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError.message);
+      return res.status(503).json({
+        error: 'Database service unavailable. Please connect to a database service like Neon or set up MySQL.'
+      });
+    }
+
     // Get user from database
     const [userRows] = await pool.execute(
       'SELECT * FROM users WHERE email = ? AND is_verified = TRUE',
@@ -389,7 +423,21 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+
+    // Provide specific error messages based on error type
+    if (error.code === 'ECONNREFUSED' || error.code === 'ER_ACCESS_DENIED_ERROR') {
+      return res.status(503).json({
+        error: 'Database connection failed. Please ensure database is running and credentials are correct.'
+      });
+    } else if (error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(503).json({
+        error: 'Database tables not found. Please initialize the database.'
+      });
+    } else {
+      return res.status(500).json({
+        error: `Login failed: ${error.message}`
+      });
+    }
   }
 });
 
