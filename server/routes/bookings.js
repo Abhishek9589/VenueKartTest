@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { sendVenueInquiryEmail, sendInquiryNotificationToVenueKart } from '../services/emailService.js';
+import { sendVenueInquiryEmail, sendInquiryNotificationToVenueKart, sendBookingConfirmationEmail, sendBookingRejectionEmail } from '../services/emailService.js';
 
 const router = Router();
 
@@ -148,38 +148,85 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const ownerId = req.user.id;
-    
+
     if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
-    
-    // Check if booking belongs to owner's venue
+
+    // Check if booking belongs to owner's venue and get full booking details
     const [bookings] = await pool.execute(`
-      SELECT b.*, v.owner_id
+      SELECT b.*, v.owner_id, v.name as venue_name, v.location as venue_location
       FROM bookings b
       JOIN venues v ON b.venue_id = v.id
       WHERE b.id = ? AND v.owner_id = ?
     `, [id, ownerId]);
-    
+
     if (bookings.length === 0) {
       return res.status(404).json({ error: 'Booking not found or access denied' });
     }
-    
+
+    const booking = bookings[0];
+    const previousStatus = booking.status;
+
     // Update booking status
     await pool.execute(
       'UPDATE bookings SET status = ? WHERE id = ?',
       [status, id]
     );
-    
+
     // If confirmed, increment venue booking count
     if (status === 'confirmed') {
       await pool.execute(
         'UPDATE venues SET total_bookings = total_bookings + 1 WHERE id = ?',
-        [bookings[0].venue_id]
+        [booking.venue_id]
       );
     }
-    
-    res.json({ message: 'Booking status updated successfully' });
+
+    // Send email notification to customer if status changed from pending
+    if (previousStatus === 'pending' && (status === 'confirmed' || status === 'cancelled')) {
+      const bookingData = {
+        customer: {
+          name: booking.customer_name,
+          email: booking.customer_email
+        },
+        venue: {
+          name: booking.venue_name,
+          location: booking.venue_location
+        },
+        event: {
+          date: booking.event_date,
+          type: booking.event_type,
+          guestCount: booking.guest_count,
+          amount: booking.amount,
+          specialRequests: booking.special_requirements || 'None'
+        },
+        bookingId: booking.id
+      };
+
+      // Send appropriate email notification
+      if (status === 'confirmed') {
+        try {
+          await sendBookingConfirmationEmail(booking.customer_email, bookingData);
+          console.log(`Confirmation email sent to ${booking.customer_email} for booking ${id}`);
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+          // Don't fail the request if email fails
+        }
+      } else if (status === 'cancelled') {
+        try {
+          await sendBookingRejectionEmail(booking.customer_email, bookingData);
+          console.log(`Rejection email sent to ${booking.customer_email} for booking ${id}`);
+        } catch (emailError) {
+          console.error('Error sending rejection email:', emailError);
+          // Don't fail the request if email fails
+        }
+      }
+    }
+
+    res.json({
+      message: 'Booking status updated successfully',
+      emailSent: previousStatus === 'pending' && (status === 'confirmed' || status === 'cancelled')
+    });
   } catch (error) {
     console.error('Error updating booking status:', error);
     res.status(500).json({ error: 'Failed to update booking status' });
