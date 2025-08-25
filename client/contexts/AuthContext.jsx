@@ -51,8 +51,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (email, name, userType, password, mobileNumber) => {
-    return await authService.register(email, name, userType, password, mobileNumber);
+  const register = async (email, name, userType, password) => {
+    return await authService.register(email, name, userType, password);
   };
 
   const verifyOTP = async (email, otp) => {
