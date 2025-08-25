@@ -21,6 +21,7 @@ import VerifyOTP from "./pages/VerifyOTP";
 import AdminDashboard from "./pages/AdminDashboard";
 import AddVenue from "./pages/AddVenue";
 import Favorites from "./pages/Favorites";
+import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/venues" element={<Layout><Venues /></Layout>} />
             <Route path="/venue/:id" element={<Layout><VenueDetail /></Layout>} />
             <Route path="/favorites" element={<Layout><Favorites /></Layout>} />
+            <Route path="/dashboard" element={<Layout><UserDashboard /></Layout>} />
             <Route path="/about" element={<Layout><About /></Layout>} />
             <Route path="/contact" element={<Layout><Contact /></Layout>} />
             <Route path="/signin" element={<AuthLayout><SignIn /></AuthLayout>} />
