@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
+import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
 import {
   MapPin,
   Users,
@@ -44,8 +45,8 @@ export default function Venues() {
   const [filteredVenues, setFilteredVenues] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [venueTypes, setVenueTypes] = useState(["All Types"]);
-  const [locations, setLocations] = useState(["All Locations"]);
+  const [venueTypes, setVenueTypes] = useState(VENUE_TYPES);
+  const [locations, setLocations] = useState(PUNE_AREAS);
   const [currentPage, setCurrentPage] = useState(1);
   const [venuesPerPage] = useState(20);
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -60,8 +61,8 @@ export default function Venues() {
   };
 
   // Filter states
-  const [selectedType, setSelectedType] = useState("All Types");
-  const [selectedLocation, setSelectedLocation] = useState("All Locations");
+  const [selectedType, setSelectedType] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [priceRange, setPriceRange] = useState([0, 100000]);
   const [capacityRange, setCapacityRange] = useState([0, 1000]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,13 +107,6 @@ export default function Venues() {
 
       setVenues(apiVenues);
 
-      // Extract unique types and locations for filters
-      const uniqueTypes = ["All Types", ...new Set(apiVenues.map(v => v.type).filter(Boolean))];
-      const uniqueLocations = ["All Locations", ...new Set(apiVenues.map(v => v.location).filter(Boolean))];
-
-      setVenueTypes(uniqueTypes);
-      setLocations(uniqueLocations);
-
       // Set price and capacity ranges based on actual data
       const prices = apiVenues.map(v => v.price);
       const capacities = apiVenues.map(v => v.capacity);
@@ -144,11 +138,11 @@ export default function Venues() {
       filtered = filtered.filter(venue => isFavorite(venue.id));
     }
 
-    if (selectedType !== "All Types") {
+    if (selectedType && selectedType.trim() !== "") {
       filtered = filtered.filter(venue => venue.type === selectedType);
     }
 
-    if (selectedLocation !== "All Locations") {
+    if (selectedLocation && selectedLocation.trim() !== "") {
       filtered = filtered.filter(venue => venue.location === selectedLocation);
     }
 
@@ -181,8 +175,8 @@ export default function Venues() {
   };
 
   const clearFilters = () => {
-    setSelectedType("All Types");
-    setSelectedLocation("All Locations");
+    setSelectedType("");
+    setSelectedLocation("");
     setPriceRange([0, 100000]);
     setCapacityRange([0, 1000]);
     setSearchQuery("");
@@ -252,31 +246,25 @@ export default function Venues() {
               {/* Venue Type */}
               <div className="space-y-2 mb-6">
                 <label className="text-sm font-medium text-gray-700">Venue Type</label>
-                <Select value={selectedType} onValueChange={setSelectedType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {venueTypes.map(type => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <AutocompleteInput
+                  options={venueTypes}
+                  value={selectedType}
+                  onChange={setSelectedType}
+                  placeholder="Type to search..."
+                  className="w-full"
+                />
               </div>
 
               {/* Location */}
               <div className="space-y-2 mb-6">
                 <label className="text-sm font-medium text-gray-700">Location</label>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map(location => (
-                      <SelectItem key={location} value={location}>{location}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <AutocompleteInput
+                  options={locations}
+                  value={selectedLocation}
+                  onChange={setSelectedLocation}
+                  placeholder="Type to search..."
+                  className="w-full"
+                />
               </div>
 
               {/* Price Range */}

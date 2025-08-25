@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { User, Building, Mail, Phone, Eye, EyeOff, Lock } from 'lucide-react';
+import { User, Building, Mail, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function SignUp() {
@@ -15,7 +15,6 @@ export default function SignUp() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    mobileNumber: '',
     password: '',
     agreeToTerms: false
   });
@@ -46,7 +45,7 @@ export default function SignUp() {
         throw new Error('Password must be at least 6 characters long');
       }
 
-      await register(formData.email, formData.fullName, userType, formData.password, formData.mobileNumber);
+      await register(formData.email, formData.fullName, userType, formData.password);
 
       // Navigate to OTP verification
       navigate('/verify-otp', {
@@ -161,25 +160,6 @@ export default function SignUp() {
                 </div>
               </div>
 
-              {/* Mobile Number */}
-              <div>
-                <label htmlFor="mobileNumber" className="block text-sm font-medium text-gray-700 mb-2">
-                  Mobile Number
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    id="mobileNumber"
-                    name="mobileNumber"
-                    type="tel"
-                    required
-                    value={formData.mobileNumber}
-                    onChange={handleChange}
-                    placeholder="Enter your mobile number"
-                    className="pl-10 h-12 border-gray-300 focus:border-venue-indigo focus:ring-venue-indigo"
-                  />
-                </div>
-              </div>
 
               {/* Password */}
               <div>

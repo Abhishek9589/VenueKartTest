@@ -144,7 +144,7 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+    <div className="h-screen bg-gray-50 flex items-center justify-center overflow-hidden">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
