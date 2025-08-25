@@ -3,18 +3,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { X, Upload, Plus, Trash2 } from 'lucide-react';
+import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
 
 export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     venueName: '',
     description: '',
+    venueType: '',
+    area: '',
     footfall: '',
-    location: 'Pune, Maharashtra',
-    images: [],
-    facilities: [''],
     priceMin: '',
-    priceMax: ''
+    priceMax: '',
+    facilities: [''],
+    images: []
   });
 
   const [errors, setErrors] = useState({});
@@ -101,13 +104,15 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     }
+    if (!formData.venueType) {
+      newErrors.venueType = 'Venue type is required';
+    }
+    if (!formData.area) {
+      newErrors.area = 'Area is required';
+    }
     if (!formData.footfall || formData.footfall <= 0) {
       newErrors.footfall = 'Valid footfall capacity is required';
     }
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
-    }
-    // Images are now optional - no validation needed
     if (!formData.priceMin || formData.priceMin <= 0) {
       newErrors.priceMin = 'Valid minimum price is required';
     }
@@ -147,17 +152,36 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
       });
 
       if (!response.ok) {
-        // Simple error handling without cloning
-        console.error('Image upload failed:', response.status, response.statusText);
-        throw new Error(`Failed to upload images: ${response.status}`);
+        let errorMessage = `Failed to upload images: ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          // If response is not JSON, use the status text
+          errorMessage = `${errorMessage} - ${response.statusText}`;
+        }
+        
+        console.error('Image upload failed:', response.status, response.statusText, errorMessage);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       return data.images.map(img => img.url);
     } catch (error) {
       console.error('Image upload error:', error);
-      // Return empty array instead of throwing error - make images optional
-      setErrors(prev => ({ ...prev, images: 'Image upload failed, but venue can be saved without images' }));
+      
+      // Show more specific error message
+      let userMessage = 'Image upload failed, but venue can be saved without images';
+      if (error.message.includes('Must supply api_key') || error.message.includes('demo')) {
+        userMessage = 'Image upload service not configured. Venue will be saved without images.';
+      } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+        userMessage = 'Authentication failed. Please sign in again.';
+      } else if (error.message.includes('413') || error.message.includes('too large')) {
+        userMessage = 'Images are too large. Please use smaller images.';
+      }
+      
+      setErrors(prev => ({ ...prev, images: userMessage }));
       return [];
     } finally {
       setUploadingImages(false);
@@ -185,7 +209,8 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
           facilities: formData.facilities.filter(f => f.trim()),
           footfall: parseInt(formData.footfall),
           priceMin: parseInt(formData.priceMin),
-          priceMax: parseInt(formData.priceMax)
+          priceMax: parseInt(formData.priceMax),
+          location: `${formData.area}, Pune`
         };
 
         await onSubmit(venueData);
@@ -193,12 +218,13 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
         setFormData({
           venueName: '',
           description: '',
+          venueType: '',
+          area: '',
           footfall: '',
-          location: 'Pune, Maharashtra',
-          images: [],
-          facilities: [''],
           priceMin: '',
-          priceMax: ''
+          priceMax: '',
+          facilities: [''],
+          images: []
         });
         setErrors({});
       } catch (error) {
@@ -215,20 +241,22 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl max-h-[95vh] flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl text-venue-dark">Add New Venue</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-6 w-6" />
+      <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-lg">
+        <CardHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
+          <CardTitle className="text-xl font-semibold text-gray-900">Add New Venue</CardTitle>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+            <X className="h-5 w-5" />
           </Button>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
+        
+        <CardContent className="flex-1 overflow-y-auto px-6 py-6">
           {errors.general && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {errors.general}
             </div>
           )}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Venue Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -238,7 +266,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                 value={formData.venueName}
                 onChange={(e) => handleInputChange('venueName', e.target.value)}
                 placeholder="Enter venue name"
-                className={errors.venueName ? 'border-red-500' : ''}
+                className={`h-10 ${errors.venueName ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
               />
               {errors.venueName && (
                 <p className="text-red-500 text-sm mt-1">{errors.venueName}</p>
@@ -255,15 +283,51 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 placeholder="Describe your venue..."
                 rows={4}
-                className={errors.description ? 'border-red-500' : ''}
+                className={`resize-none ${errors.description ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
               />
               {errors.description && (
                 <p className="text-red-500 text-sm mt-1">{errors.description}</p>
               )}
             </div>
 
-            {/* Footfall and Location */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Venue Type and Area */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Venue Type *
+                </label>
+                <Input
+                  value={formData.venueType}
+                  onChange={(e) => handleInputChange('venueType', e.target.value)}
+                  placeholder="Type venue type manually..."
+                  className={`w-full h-10 ${errors.venueType ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500`}
+                />
+                {errors.venueType && (
+                  <p className="text-red-500 text-sm mt-1">{errors.venueType}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Area (Pune) *
+                </label>
+                <AutocompleteInput
+                  options={PUNE_AREAS}
+                  value={formData.area}
+                  onChange={(value) => handleInputChange('area', value)}
+                  placeholder="Type to search..."
+                  className={`w-full h-10 ${errors.area ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500`}
+                  data-field="area"
+                  data-value={formData.area}
+                />
+                {errors.area && (
+                  <p className="text-red-500 text-sm mt-1">{errors.area}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Footfall Capacity and Price Range */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Footfall Capacity *
@@ -273,117 +337,39 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                   value={formData.footfall}
                   onChange={(e) => handleInputChange('footfall', e.target.value)}
                   placeholder="Maximum guests"
-                  className={errors.footfall ? 'border-red-500' : ''}
+                  className={`h-10 ${errors.footfall ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
                 />
                 {errors.footfall && (
                   <p className="text-red-500 text-sm mt-1">{errors.footfall}</p>
                 )}
               </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location *
+                  Price Range per Day (₹) *
                 </label>
-                <Input
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="City, State"
-                  className={errors.location ? 'border-red-500' : ''}
-                />
-                {errors.location && (
-                  <p className="text-red-500 text-sm mt-1">{errors.location}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Price Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price Range per Day (₹) *
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="grid grid-cols-2 gap-2">
                   <Input
                     type="number"
                     value={formData.priceMin}
                     onChange={(e) => handleInputChange('priceMin', e.target.value)}
                     placeholder="Minimum price"
-                    className={errors.priceMin ? 'border-red-500' : ''}
+                    className={`h-10 ${errors.priceMin ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
                   />
-                  {errors.priceMin && (
-                    <p className="text-red-500 text-sm mt-1">{errors.priceMin}</p>
-                  )}
-                </div>
-                <div>
                   <Input
                     type="number"
                     value={formData.priceMax}
                     onChange={(e) => handleInputChange('priceMax', e.target.value)}
                     placeholder="Maximum price"
-                    className={errors.priceMax ? 'border-red-500' : ''}
+                    className={`h-10 ${errors.priceMax ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
                   />
-                  {errors.priceMax && (
-                    <p className="text-red-500 text-sm mt-1">{errors.priceMax}</p>
-                  )}
                 </div>
-              </div>
-            </div>
-
-            {/* Images */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Images (Optional - up to 10 allowed)
-              </label>
-              <div className="space-y-3">
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-4 text-gray-500" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> venue images
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 10MB each</p>
-                    </div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-                
-                {formData.images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {formData.images.map((image, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={image}
-                          alt={`Venue ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="destructive"
-                          className="absolute -top-2 -right-2 h-6 w-6"
-                          onClick={() => removeImage(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                {(errors.priceMin || errors.priceMax) && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.priceMin || errors.priceMax}
+                  </p>
                 )}
-                
-                <p className="text-sm text-gray-600">
-                  {formData.images.length}/10 images uploaded
-                  {formData.images.length === 0 && ' (Images are optional)'}
-                </p>
               </div>
-              {errors.images && (
-                <p className="text-red-500 text-sm mt-1">{errors.images}</p>
-              )}
             </div>
 
             {/* Facilities */}
@@ -398,13 +384,14 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                       value={facility}
                       onChange={(e) => handleFacilityChange(index, e.target.value)}
                       placeholder="Enter facility (e.g., AC, Parking, Catering)"
-                      className="flex-1"
+                      className="flex-1 h-10 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                     />
                     {formData.facilities.length > 1 && (
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
+                        className="h-10 w-10"
                         onClick={() => removeFacility(index)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -416,7 +403,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                   type="button"
                   variant="outline"
                   onClick={addFacility}
-                  className="w-full"
+                  className="w-full h-10 text-sm border-gray-300 hover:bg-gray-50"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Another Facility
@@ -427,20 +414,73 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
               )}
             </div>
 
+            {/* Images */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Images (Optional - up to 10 allowed)
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label htmlFor="image-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600 font-medium">Click to upload venue images</p>
+                  <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 10MB each</p>
+                </label>
+              </div>
+              
+              <p className="text-sm text-gray-500 mt-2">
+                {formData.images.length}/10 images uploaded {formData.images.length === 0 && '(Images are optional)'}
+              </p>
+              
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-3 mt-4">
+                  {formData.images.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={image}
+                        alt={`Venue ${index + 1}`}
+                        className="w-full h-20 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="destructive"
+                        className="absolute -top-2 -right-2 h-6 w-6"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {errors.images && (
+                <p className="text-red-500 text-sm mt-1">{errors.images}</p>
+              )}
+            </div>
+
             {/* Submit Buttons */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-3 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="flex-1"
+                className="flex-1 h-10"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={uploadingImages || isSubmitting}
-                className="flex-1 bg-venue-indigo hover:bg-venue-purple text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploadingImages ? (
                   <div className="flex items-center">

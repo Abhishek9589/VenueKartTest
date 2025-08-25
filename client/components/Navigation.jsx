@@ -27,7 +27,7 @@ export default function Navigation() {
 
   const userNavLinks = [
     ...navLinks,
-    ...(isLoggedIn && !isVenueOwner() ? [{ name: 'Favorites', path: '/favorites' }] : []),
+    // Remove favorites tab for customers - they should not see this
   ];
 
   const currentNavLinks = isLoggedIn ? userNavLinks : navLinks;
