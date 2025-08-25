@@ -20,7 +20,8 @@ import {
   Users,
   MapPin,
   DollarSign,
-  Trash2
+  Trash2,
+  Bell
 } from 'lucide-react';
 
 // API service functions
@@ -74,6 +75,9 @@ export default function AdminDashboard() {
     totalRevenue: 0
   });
   const [loading, setLoading] = useState(true);
+  const [inquiryCount, setInquiryCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [inquiries, setInquiries] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isVenueOwner } = useAuth();
@@ -93,12 +97,31 @@ export default function AdminDashboard() {
       await Promise.all([
         loadVenues(),
         loadBookings(),
-        loadDashboardStats()
+        loadDashboardStats(),
+        loadInquiryCount()
       ]);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInquiryCount = async () => {
+    try {
+      const data = await apiCall('/api/bookings/owner/inquiry-count');
+      setInquiryCount(data.inquiryCount || 0);
+    } catch (error) {
+      console.error('Error loading inquiry count:', error);
+    }
+  };
+
+  const loadInquiries = async () => {
+    try {
+      const data = await apiCall('/api/bookings/owner/inquiries');
+      setInquiries(data);
+    } catch (error) {
+      console.error('Error loading inquiries:', error);
     }
   };
 
@@ -138,7 +161,6 @@ export default function AdminDashboard() {
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'venues', label: 'Venues', icon: Building },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -414,8 +436,29 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-4">
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">View</Button>
-                          <Button size="sm" variant="outline">Contact</Button>
+                          {booking.status === 'pending' ? (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleBookingAction(booking.id, 'confirmed')}
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleBookingAction(booking.id, 'cancelled')}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="outline">View</Button>
+                              <Button size="sm" variant="outline">Contact</Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -429,78 +472,6 @@ export default function AdminDashboard() {
     </div>
   );
 
-  const renderAnalytics = () => (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-venue-dark">Analytics</h1>
-        <p className="text-gray-600">View performance metrics and insights</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Venue Performance</CardTitle>
-            <CardDescription>Views and bookings by venue</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {loading ? (
-                <div className="text-center py-4 text-gray-500">Loading analytics...</div>
-              ) : venues.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">No venues to analyze</div>
-              ) : (
-                venues.map((venue) => (
-                  <div key={venue.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{venue.name}</p>
-                      <p className="text-sm text-gray-600">{venue.booking_count || 0} bookings</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{venue.capacity || 0} guests</p>
-                      <p className="text-sm text-gray-600">Capacity</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue Analytics</CardTitle>
-            <CardDescription>Monthly revenue breakdown</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {loading ? (
-                <div className="text-center py-4 text-gray-500">Loading revenue data...</div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span>Total Revenue</span>
-                    <span className="font-semibold">₹{dashboardStats.totalRevenue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Average per Booking</span>
-                    <span className="font-semibold">
-                      ₹{dashboardStats.totalBookings > 0 ? Math.round(dashboardStats.totalRevenue / dashboardStats.totalBookings).toLocaleString() : '0'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Pending Revenue</span>
-                    <span className="font-semibold text-yellow-600">
-                      ₹{bookings.filter(b => b.status === 'pending').reduce((sum, b) => sum + b.amount, 0).toLocaleString()}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
 
   const [accountData, setAccountData] = useState({
     name: '',
@@ -799,6 +770,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleBookingAction = async (bookingId, newStatus) => {
+    const actionText = newStatus === 'confirmed' ? 'accept' : 'reject';
+
+    if (!window.confirm(`Are you sure you want to ${actionText} this booking?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await apiCall(`/api/bookings/${bookingId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      // Reload bookings, stats, and inquiry count after status change
+      await Promise.all([
+        loadBookings(),
+        loadDashboardStats(),
+        loadInquiryCount()
+      ]);
+
+      showSuccess(`Booking ${actionText}ed successfully!`);
+    } catch (error) {
+      console.error(`Error ${actionText}ing booking:`, error);
+      showError(`Failed to ${actionText} booking. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
@@ -807,8 +808,6 @@ export default function AdminDashboard() {
         return renderVenues();
       case 'bookings':
         return renderBookings();
-      case 'analytics':
-        return renderAnalytics();
       case 'settings':
         return renderSettings();
       default:
@@ -891,6 +890,77 @@ export default function AdminDashboard() {
               <Menu className="h-6 w-6" />
             </Button>
             <div className="flex items-center space-x-4">
+              {/* Notification Bell */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={async () => {
+                    if (!showNotifications) {
+                      await loadInquiries();
+                    }
+                    setShowNotifications(!showNotifications);
+                  }}
+                  className="relative"
+                >
+                  <Bell className="h-5 w-5" />
+                  {inquiryCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                      {inquiryCount > 99 ? '99+' : inquiryCount}
+                    </span>
+                  )}
+                </Button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="p-4 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-900">Venue Inquiries</h3>
+                      <p className="text-sm text-gray-600">{inquiryCount} pending inquiries</p>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {inquiries.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          No pending inquiries
+                        </div>
+                      ) : (
+                        inquiries.slice(0, 5).map((inquiry) => (
+                          <div key={inquiry.id} className="p-3 border-b border-gray-100 hover:bg-gray-50">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm text-gray-900">{inquiry.customer_name}</p>
+                                <p className="text-xs text-gray-600">{inquiry.venue_name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(inquiry.event_date).toLocaleDateString()} • {inquiry.guest_count} guests
+                                </p>
+                              </div>
+                              <span className="text-xs text-venue-indigo font-medium">
+                                ₹{inquiry.amount.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {inquiries.length > 0 && (
+                      <div className="p-3 border-t border-gray-200">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setActiveSection('bookings');
+                            setShowNotifications(false);
+                          }}
+                        >
+                          View All Inquiries
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <span className="text-sm text-gray-600">
                 Welcome back, {user?.name || 'Admin'}
               </span>
@@ -909,6 +979,14 @@ export default function AdminDashboard() {
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Notification overlay */}
+      {showNotifications && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowNotifications(false)}
         />
       )}
 

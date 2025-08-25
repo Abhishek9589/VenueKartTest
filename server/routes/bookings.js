@@ -213,6 +213,56 @@ router.get('/owner/recent', authenticateToken, async (req, res) => {
   }
 });
 
+// Get inquiry count for notifications (protected)
+router.get('/owner/inquiry-count', authenticateToken, async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+
+    // Count pending bookings as inquiries since that's what represents customer interest
+    const [pendingBookings] = await pool.execute(`
+      SELECT COUNT(*) as count
+      FROM bookings b
+      JOIN venues v ON b.venue_id = v.id
+      WHERE v.owner_id = ? AND b.status = 'pending'
+    `, [ownerId]);
+
+    res.json({
+      inquiryCount: pendingBookings[0].count || 0,
+      pendingBookings: pendingBookings[0].count || 0
+    });
+  } catch (error) {
+    console.error('Error fetching inquiry count:', error);
+    res.status(500).json({ error: 'Failed to fetch inquiry count' });
+  }
+});
+
+// Get all inquiries/pending bookings (protected)
+router.get('/owner/inquiries', authenticateToken, async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    const { limit = 20 } = req.query;
+
+    const [inquiries] = await pool.execute(`
+      SELECT b.*, v.name as venue_name, v.location as venue_location
+      FROM bookings b
+      JOIN venues v ON b.venue_id = v.id
+      WHERE v.owner_id = ? AND b.status = 'pending'
+      ORDER BY b.created_at DESC
+      LIMIT ?
+    `, [ownerId, parseInt(limit)]);
+
+    const formattedInquiries = inquiries.map(inquiry => ({
+      ...inquiry,
+      amount: parseFloat(inquiry.amount)
+    }));
+
+    res.json(formattedInquiries);
+  } catch (error) {
+    console.error('Error fetching inquiries:', error);
+    res.status(500).json({ error: 'Failed to fetch inquiries' });
+  }
+});
+
 // Send venue inquiry (protected)
 router.post('/inquiry', authenticateToken, async (req, res) => {
   try {

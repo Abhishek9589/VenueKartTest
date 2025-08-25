@@ -154,7 +154,7 @@ export async function sendVenueInquiryEmail(ownerEmail, inquiryData) {
 // Send inquiry notification to VenueKart team
 export async function sendInquiryNotificationToVenueKart(inquiryData) {
   const { venue, customer, event } = inquiryData;
-  const venuekartEmail = process.env.VENUEKART_TEAM_EMAIL || process.env.EMAIL_USER;
+  const venuekartEmail = process.env.VENUEKART_ADMIN_EMAIL || process.env.EMAIL_USER;
 
   const mailOptions = {
     from: {
@@ -180,17 +180,16 @@ export async function sendInquiryNotificationToVenueKart(inquiryData) {
           <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
             <h3 style="color: #92400e; margin-top: 0;">Inquiry Summary</h3>
             <p><strong>Venue:</strong> ${venue.name} (ID: ${venue.id})</p>
-            <p><strong>Customer:</strong> ${customer.name} (${customer.email})</p>
+            <p><strong>Customer:</strong> ${customer.name}</p>
             <p><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString()}</p>
             <p><strong>Event Type:</strong> ${event.type}</p>
             <p><strong>Guest Count:</strong> ${event.guestCount}</p>
           </div>
 
           <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #3C3B6E; margin-top: 0;">Customer Contact Information</h3>
+            <h3 style="color: #3C3B6E; margin-top: 0;">Customer Information</h3>
             <p><strong>Name:</strong> ${customer.name}</p>
-            <p><strong>Email:</strong> ${customer.email}</p>
-            <p><strong>Phone:</strong> ${customer.phone}</p>
+            <p style="color: #64748b; font-size: 14px; font-style: italic;">Contact details have been sent directly to the venue owner for privacy protection.</p>
           </div>
 
           <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">

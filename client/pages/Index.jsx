@@ -167,46 +167,49 @@ export default function Index() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-              className="text-xl text-white/90 mb-12 max-w-3xl mx-auto"
+              className="text-xl text-white/90 mb-8 max-w-3xl mx-auto"
             >
               Discover verified venues with transparent pricing
             </motion.p>
-          </div>
-        </div>
 
-        {/* Search Bar at Bottom */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* Search Bar */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
-              className="flex flex-col md:flex-row gap-3"
+              className="max-w-4xl mx-auto"
             >
-              <div className="relative flex-1">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search city or area"
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 focus:border-venue-indigo bg-white"
-                />
+              <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-100">
+                <div className="flex flex-col lg:flex-row gap-4 items-center">
+                  <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-venue-indigo" />
+                      <Input
+                        placeholder="Search city or area"
+                        value={searchLocation}
+                        onChange={(e) => setSearchLocation(e.target.value)}
+                        className="pl-12 h-14 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-venue-indigo" />
+                      <Input
+                        placeholder="Select venue type"
+                        value={searchVenue}
+                        onChange={(e) => setSearchVenue(e.target.value)}
+                        className="pl-12 h-14 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleSearch}
+                    className="h-14 px-8 bg-venue-indigo hover:bg-venue-purple text-white font-semibold whitespace-nowrap rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[120px]"
+                  >
+                    <Search className="h-5 w-5 mr-2" />
+                    Search
+                  </Button>
+                </div>
               </div>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Select type"
-                  value={searchVenue}
-                  onChange={(e) => setSearchVenue(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 focus:border-venue-indigo bg-white"
-                />
-              </div>
-              <Button
-                onClick={handleSearch}
-                className="h-10 px-8 bg-venue-indigo hover:bg-venue-purple text-white font-semibold whitespace-nowrap"
-              >
-                Search
-              </Button>
             </motion.div>
           </div>
         </div>

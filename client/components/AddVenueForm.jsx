@@ -38,29 +38,60 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
     }
   };
 
-  const handleImageUpload = (e) => {
+  // Image compression function
+  const compressImage = (file, maxWidth = 800, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate new dimensions
+        const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (formData.images.length + files.length > 10) {
       setErrors(prev => ({ ...prev, images: 'Maximum 10 images allowed' }));
       return;
     }
 
-    files.forEach(file => {
+    // Process files one by one for better performance
+    for (const file of files) {
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setErrors(prev => ({ ...prev, images: 'Each image must be less than 10MB' }));
-        return;
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, e.target.result]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+      try {
+        // Compress image for faster upload
+        const compressedFile = await compressImage(file, 800, 0.8);
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setFormData(prev => ({
+            ...prev,
+            images: [...prev.images, e.target.result]
+          }));
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        setErrors(prev => ({ ...prev, images: 'Error processing image. Please try again.' }));
+      }
+    }
   };
 
   const removeImage = (index) => {
@@ -138,39 +169,70 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
 
     try {
       setUploadingImages(true);
+      const uploadedUrls = [];
 
-      const response = await fetch('/api/upload/images', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({
-          images: imageDataArray,
-          folder: 'venuekart/venues'
-        })
-      });
+      // Upload images sequentially for better performance and progress tracking
+      for (let i = 0; i < imageDataArray.length; i++) {
+        setErrors(prev => ({
+          ...prev,
+          images: `Uploading image ${i + 1} of ${imageDataArray.length}...`
+        }));
 
-      if (!response.ok) {
-        let errorMessage = `Failed to upload images: ${response.status}`;
-        
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          // If response is not JSON, use the status text
-          errorMessage = `${errorMessage} - ${response.statusText}`;
+          const response = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            },
+            body: JSON.stringify({
+              imageData: imageDataArray[i],
+              folder: 'venuekart/venues'
+            })
+          });
+
+          if (!response.ok) {
+            let errorMessage = `Failed to upload image ${i + 1}: ${response.status}`;
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch (jsonError) {
+              errorMessage = `${errorMessage} - ${response.statusText}`;
+            }
+            console.error('Image upload failed:', errorMessage);
+
+            // Continue with other images instead of failing completely
+            setErrors(prev => ({
+              ...prev,
+              images: `Warning: Failed to upload image ${i + 1}. Continuing with others...`
+            }));
+            continue;
+          }
+
+          const data = await response.json();
+          uploadedUrls.push(data.url);
+
+        } catch (imageError) {
+          console.error(`Error uploading image ${i + 1}:`, imageError);
+          // Continue with other images
+          setErrors(prev => ({
+            ...prev,
+            images: `Warning: Failed to upload image ${i + 1}. Continuing with others...`
+          }));
         }
-        
-        console.error('Image upload failed:', response.status, response.statusText, errorMessage);
-        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      return data.images.map(img => img.url);
+      // Clear upload progress message
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.images;
+        return newErrors;
+      });
+
+      return uploadedUrls;
     } catch (error) {
       console.error('Image upload error:', error);
-      
+
       // Show more specific error message
       let userMessage = 'Image upload failed, but venue can be saved without images';
       if (error.message.includes('Must supply api_key') || error.message.includes('demo')) {
@@ -180,7 +242,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
       } else if (error.message.includes('413') || error.message.includes('too large')) {
         userMessage = 'Images are too large. Please use smaller images.';
       }
-      
+
       setErrors(prev => ({ ...prev, images: userMessage }));
       return [];
     } finally {
@@ -463,7 +525,9 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
               )}
               
               {errors.images && (
-                <p className="text-red-500 text-sm mt-1">{errors.images}</p>
+                <p className={`text-sm mt-1 ${errors.images.includes('Uploading') ? 'text-blue-600' : 'text-red-500'}`}>
+                  {errors.images}
+                </p>
               )}
             </div>
 

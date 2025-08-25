@@ -60,12 +60,12 @@ export async function uploadImage(imageData, folder = 'venuekart', publicId = nu
     const uploadOptions = {
       folder: folder,
       resource_type: 'auto',
-      quality: 'auto:good',
+      quality: 'auto:low', // Reduced quality for faster upload
       fetch_format: 'auto',
       transformation: [
         {
-          width: 1200,
-          height: 800,
+          width: 800,  // Reduced from 1200 for faster processing
+          height: 600, // Reduced from 800 for faster processing
           crop: 'limit'
         }
       ]
@@ -120,11 +120,14 @@ export async function deleteImage(publicId) {
  */
 export async function uploadMultipleImages(imageDataArray, folder = 'venuekart') {
   try {
-    const uploadPromises = imageDataArray.map(imageData =>
-      uploadImage(imageData, folder)
-    );
+    const results = [];
 
-    const results = await Promise.all(uploadPromises);
+    // Upload images sequentially to reduce memory usage and server load
+    for (const imageData of imageDataArray) {
+      const result = await uploadImage(imageData, folder);
+      results.push(result);
+    }
+
     return results;
   } catch (error) {
     console.error('Multiple images upload error:', error);
