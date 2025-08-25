@@ -1,65 +1,46 @@
-import { Link, useLocation } from "react-router-dom";
-import { useEffect } from "react";
-import { Home, ArrowLeft } from "lucide-react";
 
-const NotFound = () => {
-  const location = useLocation();
 
-  useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname,
-    );
-  }, [location.pathname]);
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Home, ArrowLeft } from 'lucide-react';
+import { scrollToTop } from '@/lib/navigation';
 
+export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center max-w-md mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full text-center">
         <div className="mb-8">
-          <div className="text-8xl font-bold text-venue-blue mb-4">404</div>
-          <h1 className="text-3xl font-bold text-venue-navy mb-4">
-            Page Not Found
-          </h1>
-          <p className="text-lg text-gray-600 mb-8">
-            Oops! The page you're looking for doesn't exist. It might have been
-            moved, deleted, or you entered the wrong URL.
+          <h1 className="text-9xl font-bold text-venue-indigo mb-4">404</h1>
+          <h2 className="text-2xl font-semibold text-venue-dark mb-2">Page Not Found</h2>
+          <p className="text-gray-600">
+            Sorry, the page you are looking for doesn't exist or has been moved.
           </p>
         </div>
 
         <div className="space-y-4">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 bg-venue-blue hover:bg-venue-navy text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
-          >
-            <Home size={20} />
-            Back to Home
-          </Link>
+          <Button asChild className="bg-venue-indigo hover:bg-venue-purple text-white w-full" onClick={scrollToTop}>
+            <Link to="/">
+              <Home className="h-4 w-4 mr-2" />
+              Go to Homepage
+            </Link>
+          </Button>
 
-          <div className="text-center">
-            <button
-              onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-venue-blue hover:text-venue-navy font-medium"
-            >
-              <ArrowLeft size={16} />
-              Go Back
-            </button>
-          </div>
+          <Button asChild variant="outline" className="w-full" onClick={scrollToTop}>
+            <Link to="/venues">
+              Browse Venues
+            </Link>
+          </Button>
         </div>
 
-        <div className="mt-12 text-sm text-gray-500">
-          <p>
-            If you believe this is an error, please{" "}
-            <Link
-              to="/contact"
-              className="text-venue-blue hover:text-venue-navy underline"
-            >
-              contact us
+        <div className="mt-8">
+          <Button asChild variant="ghost" className="text-venue-indigo">
+            <Link to={-1}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go Back
             </Link>
-          </p>
+          </Button>
         </div>
       </div>
     </div>
   );
-};
-
-export default NotFound;
+}

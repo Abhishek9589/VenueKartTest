@@ -1,552 +1,378 @@
-import express from 'express';
+import { Router } from 'express';
 import pool from '../config/database.js';
-import { 
-  authenticateJWT, 
-  optionalAuthenticateJWT,
-  requireRole, 
-  requireOwnership,
-  validateVenue,
-  generalRateLimit,
-  uploadRateLimit
-} from '../middleware/auth.js';
-import { uploadMiddleware, deleteImage } from '../utils/upload.js';
+import { authenticateToken } from '../middleware/auth.js';
 
-const router = express.Router();
+const router = Router();
 
-// Get all venues (with optional filtering and pagination)
-router.get('/', optionalAuthenticateJWT, generalRateLimit, async (req, res) => {
-  const client = await pool.connect();
-  
+// Get all venues (public)
+router.get('/', async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 12,
-      city,
-      state,
-      venue_type,
-      min_capacity,
-      max_capacity,
-      min_price,
-      max_price,
-      search,
-      sort_by = 'created_at',
-      sort_order = 'DESC'
-    } = req.query;
+    const { location, search, limit = 10, offset = 0 } = req.query;
 
-    // Validation
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(50, Math.max(1, parseInt(limit))); // Max 50 items per page
-    const offset = (pageNum - 1) * limitNum;
+    // First try the full query with all tables
+    let query = `
+      SELECT v.*, u.name as owner_name, u.mobile_number as owner_phone,
+             GROUP_CONCAT(DISTINCT vi.image_url) as images,
+             GROUP_CONCAT(DISTINCT vf.facility_name) as facilities
+      FROM venues v
+      LEFT JOIN users u ON v.owner_id = u.id
+      LEFT JOIN venue_images vi ON v.id = vi.venue_id
+      LEFT JOIN venue_facilities vf ON v.id = vf.venue_id
+      WHERE v.status = 'active'
+    `;
 
-    // Build WHERE clause
-    const conditions = ['v.is_active = true'];
-    const values = [];
-    let paramIndex = 1;
+    const params = [];
 
-    if (city) {
-      conditions.push(`v.city ILIKE $${paramIndex++}`);
-      values.push(`%${city}%`);
-    }
-
-    if (state) {
-      conditions.push(`v.state ILIKE $${paramIndex++}`);
-      values.push(`%${state}%`);
-    }
-
-    if (venue_type) {
-      conditions.push(`v.venue_type = $${paramIndex++}`);
-      values.push(venue_type);
-    }
-
-    if (min_capacity) {
-      conditions.push(`v.capacity >= $${paramIndex++}`);
-      values.push(parseInt(min_capacity));
-    }
-
-    if (max_capacity) {
-      conditions.push(`v.capacity <= $${paramIndex++}`);
-      values.push(parseInt(max_capacity));
-    }
-
-    if (min_price) {
-      conditions.push(`v.price_per_day >= $${paramIndex++}`);
-      values.push(parseFloat(min_price));
-    }
-
-    if (max_price) {
-      conditions.push(`v.price_per_day <= $${paramIndex++}`);
-      values.push(parseFloat(max_price));
+    if (location) {
+      query += ' AND v.location LIKE ?';
+      params.push(`%${location}%`);
     }
 
     if (search) {
-      conditions.push(`(v.name ILIKE $${paramIndex} OR v.description ILIKE $${paramIndex} OR v.location ILIKE $${paramIndex})`);
-      values.push(`%${search}%`);
-      paramIndex++;
+      query += ' AND (v.name LIKE ? OR v.description LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
     }
 
-    // Build ORDER BY clause
-    const allowedSortFields = ['created_at', 'name', 'price_per_day', 'capacity', 'rating'];
-    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
-    const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    query += ' GROUP BY v.id ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
 
-    // Main query
-    const venuesQuery = `
-      SELECT 
-        v.id, v.name, v.description, v.venue_type, v.location, v.address,
-        v.city, v.state, v.capacity, v.price_per_day, v.amenities, v.facilities,
-        v.images, v.availability_status, v.is_verified, v.rating, v.review_count,
-        v.created_at, v.updated_at,
-        u.name as owner_name, u.email as owner_email, u.phone as owner_phone
-      FROM venues v
-      JOIN users u ON v.owner_id = u.id
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY v.${sortField} ${sortDirection}
-      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-    `;
+    let venues;
+    try {
+      [venues] = await pool.execute(query, params);
+    } catch (tableError) {
+      // If tables don't exist, use fallback query
+      console.log('Using fallback venues query due to missing tables');
 
-    values.push(limitNum, offset);
+      let fallbackQuery = `
+        SELECT v.*, u.name as owner_name, u.mobile_number as owner_phone
+        FROM venues v
+        LEFT JOIN users u ON v.owner_id = u.id
+        WHERE v.status = 'active'
+      `;
 
-    // Count query
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM venues v
-      WHERE ${conditions.join(' AND ')}
-    `;
+      const fallbackParams = [];
 
-    const [venuesResult, countResult] = await Promise.all([
-      client.query(venuesQuery, values),
-      client.query(countQuery, values.slice(0, -2)) // Remove limit and offset for count
-    ]);
-
-    const venues = venuesResult.rows;
-    const total = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(total / limitNum);
-
-    res.json({
-      success: true,
-      data: {
-        venues,
-        pagination: {
-          current_page: pageNum,
-          total_pages: totalPages,
-          total_items: total,
-          items_per_page: limitNum,
-          has_next: pageNum < totalPages,
-          has_previous: pageNum > 1
-        }
+      if (location) {
+        fallbackQuery += ' AND v.location LIKE ?';
+        fallbackParams.push(`%${location}%`);
       }
-    });
 
+      if (search) {
+        fallbackQuery += ' AND (v.name LIKE ? OR v.description LIKE ?)';
+        fallbackParams.push(`%${search}%`, `%${search}%`);
+      }
+
+      fallbackQuery += ' ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
+      fallbackParams.push(parseInt(limit), parseInt(offset));
+
+      try {
+        [venues] = await pool.execute(fallbackQuery, fallbackParams);
+      } catch (fallbackError) {
+        // If even basic venues table doesn't exist, return empty array
+        console.log('No venues table found, returning empty array');
+        return res.json([]);
+      }
+    }
+
+    // Format the response
+    const formattedVenues = venues.map(venue => ({
+      ...venue,
+      images: venue.images ? venue.images.split(',') : [],
+      facilities: venue.facilities ? venue.facilities.split(',') : [],
+      price: parseFloat(venue.price_per_day),
+      priceMin: venue.price_min ? parseFloat(venue.price_min) : null,
+      priceMax: venue.price_max ? parseFloat(venue.price_max) : null
+    }));
+
+    res.json(formattedVenues);
   } catch (error) {
-    console.error('Get venues error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch venues'
-    });
-  } finally {
-    client.release();
+    console.error('Error fetching venues:', error);
+    res.status(500).json({ error: 'Failed to fetch venues' });
   }
 });
 
-// Get single venue by ID
-router.get('/:id', optionalAuthenticateJWT, async (req, res) => {
-  const client = await pool.connect();
-  
+// Get venue by ID (public)
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    const venueResult = await client.query(`
-      SELECT 
-        v.*,
-        u.name as owner_name, u.email as owner_email, u.phone as owner_phone,
-        u.profile_image as owner_profile_image
+    
+    const [venues] = await pool.execute(`
+      SELECT v.*, u.name as owner_name, u.mobile_number as owner_phone, u.email as owner_email
       FROM venues v
-      JOIN users u ON v.owner_id = u.id
-      WHERE v.id = $1 AND v.is_active = true
+      LEFT JOIN users u ON v.owner_id = u.id
+      WHERE v.id = ? AND v.status = 'active'
     `, [id]);
-
-    if (venueResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Venue not found'
-      });
+    
+    if (venues.length === 0) {
+      return res.status(404).json({ error: 'Venue not found' });
     }
-
-    const venue = venueResult.rows[0];
-
-    // Get recent reviews
-    const reviewsResult = await client.query(`
-      SELECT 
-        r.id, r.rating, r.comment, r.created_at,
-        u.name as reviewer_name, u.profile_image as reviewer_image
-      FROM reviews r
-      JOIN users u ON r.client_id = u.id
-      WHERE r.venue_id = $1 AND r.is_active = true
-      ORDER BY r.created_at DESC
-      LIMIT 10
-    `, [id]);
-
-    venue.reviews = reviewsResult.rows;
-
+    
+    const venue = venues[0];
+    
+    // Get images
+    const [images] = await pool.execute(
+      'SELECT image_url, is_primary FROM venue_images WHERE venue_id = ? ORDER BY is_primary DESC',
+      [id]
+    );
+    
+    // Get facilities
+    const [facilities] = await pool.execute(
+      'SELECT facility_name FROM venue_facilities WHERE venue_id = ?',
+      [id]
+    );
+    
     res.json({
-      success: true,
-      data: { venue }
+      ...venue,
+      price: parseFloat(venue.price_per_day),
+      priceMin: venue.price_min ? parseFloat(venue.price_min) : null,
+      priceMax: venue.price_max ? parseFloat(venue.price_max) : null,
+      images: images.map(img => img.image_url),
+      facilities: facilities.map(f => f.facility_name)
     });
-
   } catch (error) {
-    console.error('Get venue error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch venue'
-    });
-  } finally {
-    client.release();
+    console.error('Error fetching venue:', error);
+    res.status(500).json({ error: 'Failed to fetch venue' });
   }
 });
 
-// Create new venue (venue owners only)
-router.post('/', 
-  authenticateJWT, 
-  requireRole(['venue_owner']), 
-  uploadRateLimit,
-  uploadMiddleware.array('images', 10),
-  validateVenue, 
-  async (req, res) => {
-    const client = await pool.connect();
+// Get venues by owner (protected)
+router.get('/owner/my-venues', authenticateToken, async (req, res) => {
+  try {
+    const ownerId = req.user.id;
     
-    try {
-      const {
-        name, description, venue_type, location, address, city, state, country = 'India',
-        postal_code, latitude, longitude, capacity, price_per_day, amenities, facilities
-      } = req.body;
-
-      const owner_id = req.user.id;
-
-      // Process uploaded images
-      const images = req.files ? req.files.map(file => file.secure_url || file.path) : [];
-
-      // Process amenities and facilities (convert strings to arrays if needed)
-      const amenitiesArray = Array.isArray(amenities) ? amenities : 
-                           (amenities ? amenities.split(',').map(a => a.trim()) : []);
-      const facilitiesArray = Array.isArray(facilities) ? facilities : 
-                            (facilities ? facilities.split(',').map(f => f.trim()) : []);
-
-      const result = await client.query(`
-        INSERT INTO venues (
-          owner_id, name, description, venue_type, location, address, city, state, country,
-          postal_code, latitude, longitude, capacity, price_per_day, amenities, facilities, images
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-        RETURNING *
-      `, [
-        owner_id, name, description, venue_type, location, address, city, state, country,
-        postal_code, latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null,
-        parseInt(capacity), parseFloat(price_per_day), amenitiesArray, facilitiesArray, images
-      ]);
-
-      const venue = result.rows[0];
-
-      res.status(201).json({
-        success: true,
-        message: 'Venue created successfully',
-        data: { venue }
-      });
-
-    } catch (error) {
-      console.error('Create venue error:', error);
-      
-      // Delete uploaded images if venue creation failed
-      if (req.files) {
-        req.files.forEach(file => {
-          if (file.public_id) {
-            deleteImage(file.public_id);
-          }
-        });
-      }
-
-      res.status(500).json({
-        success: false,
-        message: 'Failed to create venue'
-      });
-    } finally {
-      client.release();
-    }
+    const [venues] = await pool.execute(`
+      SELECT v.*, 
+             GROUP_CONCAT(DISTINCT vi.image_url) as images,
+             GROUP_CONCAT(DISTINCT vf.facility_name) as facilities,
+             COUNT(DISTINCT b.id) as booking_count,
+             COALESCE(SUM(CASE WHEN b.status = 'confirmed' THEN b.amount ELSE 0 END), 0) as total_revenue
+      FROM venues v
+      LEFT JOIN venue_images vi ON v.id = vi.venue_id
+      LEFT JOIN venue_facilities vf ON v.id = vf.venue_id
+      LEFT JOIN bookings b ON v.id = b.venue_id
+      WHERE v.owner_id = ?
+      GROUP BY v.id
+      ORDER BY v.created_at DESC
+    `, [ownerId]);
+    
+    const formattedVenues = venues.map(venue => ({
+      ...venue,
+      images: venue.images ? venue.images.split(',') : [],
+      facilities: venue.facilities ? venue.facilities.split(',') : [],
+      price: parseFloat(venue.price_per_day),
+      priceMin: venue.price_min ? parseFloat(venue.price_min) : null,
+      priceMax: venue.price_max ? parseFloat(venue.price_max) : null,
+      total_revenue: parseFloat(venue.total_revenue)
+    }));
+    
+    res.json(formattedVenues);
+  } catch (error) {
+    console.error('Error fetching owner venues:', error);
+    res.status(500).json({ error: 'Failed to fetch venues' });
   }
-);
+});
 
-// Update venue (venue owner only, own venues)
-router.put('/:id', 
-  authenticateJWT, 
-  requireRole(['venue_owner']), 
-  requireOwnership('id'),
-  uploadMiddleware.array('new_images', 10),
-  validateVenue, 
-  async (req, res) => {
-    const client = await pool.connect();
-    
-    try {
-      const { id } = req.params;
-      const owner_id = req.user.id;
+// Create new venue (protected)
+router.post('/', authenticateToken, async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    const { venueName, description, location, footfall, priceMin, priceMax, images, facilities } = req.body;
 
-      // Check if venue exists and belongs to user
-      const existingVenue = await client.query(
-        'SELECT * FROM venues WHERE id = $1 AND owner_id = $2',
-        [id, owner_id]
-      );
-
-      if (existingVenue.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Venue not found or access denied'
-        });
-      }
-
-      const {
-        name, description, venue_type, location, address, city, state, country,
-        postal_code, latitude, longitude, capacity, price_per_day, amenities, facilities,
-        remove_images = []
-      } = req.body;
-
-      // Process new uploaded images
-      const newImages = req.files ? req.files.map(file => file.secure_url || file.path) : [];
-      
-      // Get current images and remove specified ones
-      let currentImages = existingVenue.rows[0].images || [];
-      const removeImagesList = Array.isArray(remove_images) ? remove_images : 
-                              (remove_images ? remove_images.split(',') : []);
-      
-      // Remove specified images
-      currentImages = currentImages.filter(img => !removeImagesList.includes(img));
-      
-      // Add new images
-      const finalImages = [...currentImages, ...newImages];
-
-      // Process amenities and facilities
-      const amenitiesArray = Array.isArray(amenities) ? amenities : 
-                           (amenities ? amenities.split(',').map(a => a.trim()) : existingVenue.rows[0].amenities);
-      const facilitiesArray = Array.isArray(facilities) ? facilities : 
-                            (facilities ? facilities.split(',').map(f => f.trim()) : existingVenue.rows[0].facilities);
-
-      const result = await client.query(`
-        UPDATE venues SET
-          name = COALESCE($2, name),
-          description = COALESCE($3, description),
-          venue_type = COALESCE($4, venue_type),
-          location = COALESCE($5, location),
-          address = COALESCE($6, address),
-          city = COALESCE($7, city),
-          state = COALESCE($8, state),
-          country = COALESCE($9, country),
-          postal_code = COALESCE($10, postal_code),
-          latitude = COALESCE($11, latitude),
-          longitude = COALESCE($12, longitude),
-          capacity = COALESCE($13, capacity),
-          price_per_day = COALESCE($14, price_per_day),
-          amenities = COALESCE($15, amenities),
-          facilities = COALESCE($16, facilities),
-          images = $17,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND owner_id = $18
-        RETURNING *
-      `, [
-        id, name, description, venue_type, location, address, city, state, country,
-        postal_code, latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null,
-        capacity ? parseInt(capacity) : null, price_per_day ? parseFloat(price_per_day) : null,
-        amenitiesArray, facilitiesArray, finalImages, owner_id
-      ]);
-
-      const venue = result.rows[0];
-
-      res.json({
-        success: true,
-        message: 'Venue updated successfully',
-        data: { venue }
-      });
-
-    } catch (error) {
-      console.error('Update venue error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to update venue'
-      });
-    } finally {
-      client.release();
+    // Validation
+    if (!venueName || !description || !location || !footfall || !priceMin || !priceMax || !images || !facilities) {
+      return res.status(400).json({ error: 'All fields are required' });
     }
-  }
-);
-
-// Delete venue (venue owner only, own venues)
-router.delete('/:id', 
-  authenticateJWT, 
-  requireRole(['venue_owner']), 
-  requireOwnership('id'),
-  async (req, res) => {
-    const client = await pool.connect();
     
-    try {
-      const { id } = req.params;
-      const owner_id = req.user.id;
-
-      // Check if venue exists and belongs to user
-      const existingVenue = await client.query(
-        'SELECT * FROM venues WHERE id = $1 AND owner_id = $2',
-        [id, owner_id]
-      );
-
-      if (existingVenue.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Venue not found or access denied'
-        });
-      }
-
-      // Check for active bookings
-      const activeBookings = await client.query(
-        'SELECT COUNT(*) as count FROM bookings WHERE venue_id = $1 AND booking_status IN ($2, $3) AND event_date >= CURRENT_DATE',
-        [id, 'pending', 'confirmed']
-      );
-
-      if (parseInt(activeBookings.rows[0].count) > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot delete venue with active bookings'
-        });
-      }
-
-      // Soft delete (mark as inactive)
-      await client.query(
-        'UPDATE venues SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-        [id]
-      );
-
-      res.json({
-        success: true,
-        message: 'Venue deleted successfully'
-      });
-
-    } catch (error) {
-      console.error('Delete venue error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to delete venue'
-      });
-    } finally {
-      client.release();
+    if (images.length < 4) {
+      return res.status(400).json({ error: 'Minimum 4 images are required' });
     }
-  }
-);
-
-// Get venues by owner (venue owner's own venues)
-router.get('/owner/my-venues', 
-  authenticateJWT, 
-  requireRole(['venue_owner']), 
-  async (req, res) => {
-    const client = await pool.connect();
+    
+    // Start transaction
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
     
     try {
-      const owner_id = req.user.id;
-      const { page = 1, limit = 10 } = req.query;
+      // Insert venue with price range
+      const averagePrice = (parseInt(priceMin) + parseInt(priceMax)) / 2;
+      const [venueResult] = await connection.execute(`
+        INSERT INTO venues (owner_id, name, description, location, capacity, price_per_day, price_min, price_max)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [ownerId, venueName, description, location, footfall, averagePrice, priceMin, priceMax]);
+      
+      const venueId = venueResult.insertId;
+      
+      // Insert images
+      for (let i = 0; i < images.length; i++) {
+        await connection.execute(`
+          INSERT INTO venue_images (venue_id, image_url, is_primary)
+          VALUES (?, ?, ?)
+        `, [venueId, images[i], i === 0]);
+      }
+      
+      // Insert facilities
+      for (const facility of facilities) {
+        if (facility.trim()) {
+          await connection.execute(`
+            INSERT INTO venue_facilities (venue_id, facility_name)
+            VALUES (?, ?)
+          `, [venueId, facility.trim()]);
+        }
+      }
+      
+      await connection.commit();
+      
+      res.status(201).json({ 
+        message: 'Venue created successfully', 
+        venueId: venueId 
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Error creating venue:', error);
+    res.status(500).json({ error: 'Failed to create venue' });
+  }
+});
 
-      const pageNum = Math.max(1, parseInt(page));
-      const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
-      const offset = (pageNum - 1) * limitNum;
-
-      // Get venues with booking statistics
-      const venuesResult = await client.query(`
-        SELECT 
-          v.*,
-          COUNT(DISTINCT b.id) as total_bookings,
-          COUNT(DISTINCT CASE WHEN b.booking_status = 'confirmed' THEN b.id END) as confirmed_bookings,
-          COUNT(DISTINCT CASE WHEN b.booking_status = 'pending' THEN b.id END) as pending_bookings,
-          COALESCE(SUM(CASE WHEN b.booking_status = 'completed' THEN b.total_amount END), 0) as total_revenue
-        FROM venues v
-        LEFT JOIN bookings b ON v.id = b.venue_id
-        WHERE v.owner_id = $1 AND v.is_active = true
-        GROUP BY v.id
-        ORDER BY v.created_at DESC
-        LIMIT $2 OFFSET $3
-      `, [owner_id, limitNum, offset]);
-
-      // Get total count
-      const countResult = await client.query(
-        'SELECT COUNT(*) as total FROM venues WHERE owner_id = $1 AND is_active = true',
-        [owner_id]
-      );
-
-      const venues = venuesResult.rows;
-      const total = parseInt(countResult.rows[0].total);
-      const totalPages = Math.ceil(total / limitNum);
-
-      res.json({
-        success: true,
-        data: {
-          venues,
-          pagination: {
-            current_page: pageNum,
-            total_pages: totalPages,
-            total_items: total,
-            items_per_page: limitNum,
-            has_next: pageNum < totalPages,
-            has_previous: pageNum > 1
+// Update venue (protected)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ownerId = req.user.id;
+    const { venueName, description, location, footfall, priceMin, priceMax, images, facilities } = req.body;
+    
+    // Check if venue belongs to the owner
+    const [venues] = await pool.execute(
+      'SELECT * FROM venues WHERE id = ? AND owner_id = ?',
+      [id, ownerId]
+    );
+    
+    if (venues.length === 0) {
+      return res.status(404).json({ error: 'Venue not found or access denied' });
+    }
+    
+    // Start transaction
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    
+    try {
+      // Update venue
+      const averagePrice = priceMin && priceMax ? (parseInt(priceMin) + parseInt(priceMax)) / 2 : null;
+      await connection.execute(`
+        UPDATE venues
+        SET name = ?, description = ?, location = ?, capacity = ?, price_per_day = ?, price_min = ?, price_max = ?
+        WHERE id = ?
+      `, [venueName, description, location, footfall, averagePrice, priceMin, priceMax, id]);
+      
+      // Delete old images and facilities
+      await connection.execute('DELETE FROM venue_images WHERE venue_id = ?', [id]);
+      await connection.execute('DELETE FROM venue_facilities WHERE venue_id = ?', [id]);
+      
+      // Insert new images
+      if (images && images.length > 0) {
+        for (let i = 0; i < images.length; i++) {
+          await connection.execute(`
+            INSERT INTO venue_images (venue_id, image_url, is_primary)
+            VALUES (?, ?, ?)
+          `, [id, images[i], i === 0]);
+        }
+      }
+      
+      // Insert new facilities
+      if (facilities && facilities.length > 0) {
+        for (const facility of facilities) {
+          if (facility.trim()) {
+            await connection.execute(`
+              INSERT INTO venue_facilities (venue_id, facility_name)
+              VALUES (?, ?)
+            `, [id, facility.trim()]);
           }
         }
-      });
-
+      }
+      
+      await connection.commit();
+      
+      res.json({ message: 'Venue updated successfully' });
     } catch (error) {
-      console.error('Get owner venues error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch your venues'
-      });
+      await connection.rollback();
+      throw error;
     } finally {
-      client.release();
+      connection.release();
     }
+  } catch (error) {
+    console.error('Error updating venue:', error);
+    res.status(500).json({ error: 'Failed to update venue' });
   }
-);
+});
 
-// Get venue statistics for owner dashboard
-router.get('/owner/stats', 
-  authenticateJWT, 
-  requireRole(['venue_owner']), 
-  async (req, res) => {
-    const client = await pool.connect();
+// Delete venue (protected)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ownerId = req.user.id;
     
-    try {
-      const owner_id = req.user.id;
-
-      const statsResult = await client.query(`
-        SELECT 
-          COUNT(DISTINCT v.id) as total_venues,
-          COUNT(DISTINCT v.id) FILTER (WHERE v.is_verified = true) as verified_venues,
-          COUNT(DISTINCT b.id) as total_bookings,
-          COUNT(DISTINCT b.id) FILTER (WHERE b.booking_status = 'confirmed') as confirmed_bookings,
-          COUNT(DISTINCT b.id) FILTER (WHERE b.booking_status = 'pending') as pending_bookings,
-          COUNT(DISTINCT b.id) FILTER (WHERE b.event_date >= CURRENT_DATE) as upcoming_bookings,
-          COALESCE(SUM(b.total_amount) FILTER (WHERE b.booking_status = 'completed'), 0) as total_revenue,
-          COALESCE(AVG(r.rating), 0) as average_rating,
-          COUNT(DISTINCT r.id) as total_reviews
-        FROM venues v
-        LEFT JOIN bookings b ON v.id = b.venue_id
-        LEFT JOIN reviews r ON v.id = r.venue_id AND r.is_active = true
-        WHERE v.owner_id = $1 AND v.is_active = true
-      `, [owner_id]);
-
-      const stats = statsResult.rows[0];
-
-      res.json({
-        success: true,
-        data: { stats }
-      });
-
-    } catch (error) {
-      console.error('Get venue stats error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch venue statistics'
-      });
-    } finally {
-      client.release();
+    // Check if venue belongs to the owner
+    const [venues] = await pool.execute(
+      'SELECT * FROM venues WHERE id = ? AND owner_id = ?',
+      [id, ownerId]
+    );
+    
+    if (venues.length === 0) {
+      return res.status(404).json({ error: 'Venue not found or access denied' });
     }
+    
+    // Delete venue (cascade will handle related records)
+    await pool.execute('DELETE FROM venues WHERE id = ?', [id]);
+    
+    res.json({ message: 'Venue deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting venue:', error);
+    res.status(500).json({ error: 'Failed to delete venue' });
   }
-);
+});
+
+// Get owner dashboard statistics (protected)
+router.get('/owner/dashboard-stats', authenticateToken, async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    
+    // Get venue count
+    const [venueCount] = await pool.execute(
+      'SELECT COUNT(*) as count FROM venues WHERE owner_id = ?',
+      [ownerId]
+    );
+    
+    // Get booking count and revenue
+    const [bookingStats] = await pool.execute(`
+      SELECT 
+        COUNT(b.id) as total_bookings,
+        COALESCE(SUM(CASE WHEN b.status = 'confirmed' THEN b.amount ELSE 0 END), 0) as total_revenue,
+        COUNT(CASE WHEN b.status = 'pending' THEN 1 END) as pending_bookings
+      FROM venues v
+      LEFT JOIN bookings b ON v.id = b.venue_id
+      WHERE v.owner_id = ?
+    `, [ownerId]);
+    
+    // Get active venues count
+    const [activeVenues] = await pool.execute(
+      'SELECT COUNT(*) as count FROM venues WHERE owner_id = ? AND status = "active"',
+      [ownerId]
+    );
+    
+    res.json({
+      totalVenues: venueCount[0].count,
+      activeVenues: activeVenues[0].count,
+      totalBookings: bookingStats[0].total_bookings,
+      pendingBookings: bookingStats[0].pending_bookings,
+      totalRevenue: parseFloat(bookingStats[0].total_revenue)
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard statistics' });
+  }
+});
 
 export default router;

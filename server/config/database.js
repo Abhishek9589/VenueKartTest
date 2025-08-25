@@ -1,192 +1,179 @@
-import pkg from 'pg';
-const { Pool } = pkg;
+import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Database connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-// Test the connection
-pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL database');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
-});
-
-// Database initialization
-export const initializeDatabase = async () => {
-  try {
-    // Create tables if they don't exist
-    await createTables();
-    console.log('✅ Database tables initialized');
-  } catch (error) {
-    console.error('❌ Database initialization error:', error);
-    throw error;
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  ssl: {
+    rejectUnauthorized: false
   }
-};
+});
 
-// Create all necessary tables
-const createTables = async () => {
-  const client = await pool.connect();
-  
+// Initialize database tables
+export async function initializeDatabase() {
   try {
-    // Enable UUID extension
-    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-    
+    console.log('Starting database initialization...');
+
+    // Disable foreign key checks temporarily
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 0');
+
+    // Drop tables in correct order (child tables first)
+    await pool.execute('DROP TABLE IF EXISTS bookings');
+    await pool.execute('DROP TABLE IF EXISTS favorites');
+    await pool.execute('DROP TABLE IF EXISTS venue_images');
+    await pool.execute('DROP TABLE IF EXISTS venue_facilities');
+    await pool.execute('DROP TABLE IF EXISTS venues');
+    await pool.execute('DROP TABLE IF EXISTS refresh_tokens');
+    await pool.execute('DROP TABLE IF EXISTS otp_verifications');
+    await pool.execute('DROP TABLE IF EXISTS users');
+
+    console.log('Tables dropped successfully');
+
+    // Re-enable foreign key checks
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
+
     // Users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255),
-        name VARCHAR(255) NOT NULL,
-        user_type VARCHAR(50) NOT NULL CHECK (user_type IN ('client', 'venue_owner')),
+    await pool.execute(`
+      CREATE TABLE users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
         google_id VARCHAR(255) UNIQUE,
-        profile_image VARCHAR(500),
-        phone VARCHAR(20),
-        is_verified BOOLEAN DEFAULT false,
-        is_active BOOLEAN DEFAULT true,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255),
+        profile_picture VARCHAR(500),
+        mobile_number VARCHAR(20),
+        business_name VARCHAR(255),
+        location VARCHAR(255),
+        user_type ENUM('customer', 'venue-owner') DEFAULT 'customer',
+        is_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
 
     // Venues table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS venues (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    await pool.execute(`
+      CREATE TABLE venues (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        owner_id INT NOT NULL,
         name VARCHAR(255) NOT NULL,
         description TEXT,
-        venue_type VARCHAR(100) NOT NULL,
-        location VARCHAR(500) NOT NULL,
-        address TEXT NOT NULL,
-        city VARCHAR(100) NOT NULL,
-        state VARCHAR(100) NOT NULL,
-        country VARCHAR(100) DEFAULT 'India',
-        postal_code VARCHAR(20),
-        latitude DECIMAL(10, 8),
-        longitude DECIMAL(11, 8),
-        capacity INTEGER NOT NULL,
-        price_per_day DECIMAL(10, 2) NOT NULL,
-        amenities TEXT[],
-        facilities TEXT[],
-        images TEXT[],
-        availability_status VARCHAR(50) DEFAULT 'available',
-        is_verified BOOLEAN DEFAULT false,
-        is_active BOOLEAN DEFAULT true,
-        rating DECIMAL(3, 2) DEFAULT 0.00,
-        review_count INTEGER DEFAULT 0,
+        location VARCHAR(255) NOT NULL,
+        capacity INT NOT NULL,
+        price_per_day DECIMAL(10,2) NOT NULL,
+        price_min DECIMAL(10,2),
+        price_max DECIMAL(10,2),
+        status ENUM('active', 'inactive') DEFAULT 'active',
+        rating DECIMAL(3,2) DEFAULT 0.00,
+        total_bookings INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_owner (owner_id),
+        INDEX idx_location (location),
+        INDEX idx_status (status)
+      )
+    `);
+
+    // Venue images table
+    await pool.execute(`
+      CREATE TABLE venue_images (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        venue_id INT NOT NULL,
+        image_url VARCHAR(500) NOT NULL,
+        is_primary BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Venue facilities table
+    await pool.execute(`
+      CREATE TABLE venue_facilities (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        venue_id INT NOT NULL,
+        facility_name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
       )
     `);
 
     // Bookings table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS bookings (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
-        client_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    await pool.execute(`
+      CREATE TABLE bookings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        venue_id INT NOT NULL,
+        customer_id INT NOT NULL,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_email VARCHAR(255) NOT NULL,
+        customer_phone VARCHAR(20),
         event_date DATE NOT NULL,
-        start_time TIME,
-        end_time TIME,
-        guest_count INTEGER NOT NULL,
         event_type VARCHAR(100),
-        special_requests TEXT,
-        total_amount DECIMAL(10, 2) NOT NULL,
-        booking_status VARCHAR(50) DEFAULT 'pending' CHECK (booking_status IN ('pending', 'confirmed', 'cancelled', 'completed')),
-        payment_status VARCHAR(50) DEFAULT 'pending' CHECK (payment_status IN ('pending', 'partial', 'completed', 'refunded')),
-        payment_id VARCHAR(255),
+        guest_count INT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending',
+        special_requirements TEXT,
+        booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+        FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_venue (venue_id),
+        INDEX idx_customer (customer_id),
+        INDEX idx_event_date (event_date),
+        INDEX idx_status (status)
       )
     `);
 
-    // Reviews table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS reviews (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
-        client_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
-        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-        comment TEXT,
-        is_active BOOLEAN DEFAULT true,
+    // OTP verification table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS otp_verifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        otp VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        pending_data TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(venue_id, client_id, booking_id)
+        INDEX idx_email_otp (email, otp)
       )
     `);
 
-    // Refresh tokens table for JWT
-    await client.query(`
+    // Refresh tokens table
+    await pool.execute(`
       CREATE TABLE IF NOT EXISTS refresh_tokens (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        token_hash VARCHAR(255) NOT NULL,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        token VARCHAR(500) NOT NULL,
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_revoked BOOLEAN DEFAULT false
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
-    // Admin logs table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS admin_logs (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        admin_id UUID NOT NULL REFERENCES users(id),
-        action VARCHAR(255) NOT NULL,
-        target_type VARCHAR(100),
-        target_id UUID,
-        details JSONB,
-        ip_address INET,
-        user_agent TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    // Favorites table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS favorites (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        venue_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_user_venue (user_id, venue_id)
       )
     `);
 
-    // Create indexes for better performance
-    await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_venues_owner_id ON venues(owner_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_venues_location ON venues(city, state)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_bookings_venue_id ON bookings(venue_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_bookings_client_id ON bookings(client_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_bookings_event_date ON bookings(event_date)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_reviews_venue_id ON reviews(venue_id)');
-    
-    // Create trigger for updating updated_at timestamp
-    await client.query(`
-      CREATE OR REPLACE FUNCTION update_updated_at_column()
-      RETURNS TRIGGER AS $$
-      BEGIN
-        NEW.updated_at = CURRENT_TIMESTAMP;
-        RETURN NEW;
-      END;
-      $$ language 'plpgsql';
-    `);
-
-    // Apply trigger to all tables with updated_at column
-    const tables = ['users', 'venues', 'bookings', 'reviews'];
-    for (const table of tables) {
-      await client.query(`
-        DROP TRIGGER IF EXISTS update_${table}_updated_at ON ${table};
-        CREATE TRIGGER update_${table}_updated_at 
-          BEFORE UPDATE ON ${table}
-          FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-      `);
-    }
-
-  } finally {
-    client.release();
+    console.log('Database tables initialized successfully');
+  } catch (error) {
+    console.error('Error initializing database:', error);
   }
-};
+}
 
 export default pool;

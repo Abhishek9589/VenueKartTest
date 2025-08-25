@@ -1,139 +1,160 @@
-import { Link } from "react-router-dom";
-import {
-  Facebook,
-  Twitter,
-  Instagram,
-  Mail,
-  Phone,
-  MapPin,
-} from "lucide-react";
+import { Link } from 'react-router-dom';
+import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { scrollToTop } from '@/lib/navigation';
 
-const Footer = () => {
+export default function Footer() {
+  const quickLinks = [
+    { name: 'Home', href: '/' },
+    { name: 'Browse Venues', href: '/venues' },
+    { name: 'About Us', href: '/about' },
+    { name: 'Contact', href: '/contact' },
+  ];
+
+  const venueTypes = [
+    { name: 'Banquet Halls', href: '/venues?type=banquet' },
+    { name: 'Wedding Venues', href: '/venues?type=wedding' },
+    { name: 'Conference Halls', href: '/venues?type=conference' },
+    { name: 'Resorts', href: '/venues?type=resort' },
+  ];
+
+
+  const legal = [
+    { name: 'Help Center', href: '/help' },
+    { name: 'Terms of Service', href: '/terms' },
+    { name: 'Privacy Policy', href: '/privacy' },
+    { name: 'Refund Policy', href: '/refund' },
+  ];
+
   return (
-    <footer className="bg-venue-primary-accent text-white">
+    <footer className="bg-gray-800 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Logo and Description */}
-          <div className="col-span-1 md:col-span-2">
-            <Link to="/" className="flex items-center space-x-2 mb-4 group">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+          {/* Company Info */}
+          <div className="space-y-4">
+            <Link to="/" className="flex items-center space-x-2">
               <img
-                src="https://cdn.builder.io/api/v1/image/assets%2F317fd6eb2bf64600868e324db448b428%2F64862cb0fd1849b4871cf34916b603a2?format=webp&width=800"
+                src="https://cdn.builder.io/api/v1/image/assets%2F181d3ec55b014ac2aead9c04dc47e7f1%2F58dccb4263c94bf8bdc07b4891c6b92d?format=webp&width=800"
                 alt="VenueKart Logo"
-                className="w-8 h-8 rounded-lg transition-transform-smooth group-hover:scale-110 group-hover:rotate-6"
+                className="w-10 h-10 object-contain bg-white rounded-lg p-1"
               />
-              <span className="text-2xl font-bold text-white transition-colors-smooth group-hover:text-venue-secondary-accent">
-                VenueKart
-              </span>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold text-white font-inter">VenueKart</span>
+                <span className="text-xs text-venue-lavender font-medium -mt-1">Event Venue Discovery & Booking</span>
+              </div>
             </Link>
-            <p className="text-white/90 mb-4 max-w-md">
-              Discover and book the perfect venue for your special events. From
-              intimate gatherings to grand celebrations, find verified venues
-              with transparent pricing.
+            <p className="text-gray-300 text-sm">
+              Your trusted partner for finding the perfect venue for every occasion. Making event planning effortless with verified venues and transparent pricing.
             </p>
             <div className="flex space-x-4">
-              <a
-                href="#"
-                className="text-white/80 hover:text-white transition-all-smooth hover:scale-125 hover:-translate-y-1"
-              >
-                <Facebook size={20} />
+              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+                <Facebook className="h-5 w-5" />
               </a>
-              <a
-                href="#"
-                className="text-white/80 hover:text-white transition-all-smooth hover:scale-125 hover:-translate-y-1"
-              >
-                <Twitter size={20} />
+              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+                <Twitter className="h-5 w-5" />
               </a>
-              <a
-                href="#"
-                className="text-white/80 hover:text-white transition-all-smooth hover:scale-125 hover:-translate-y-1"
-              >
-                <Instagram size={20} />
+              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+                <Linkedin className="h-5 w-5" />
               </a>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-white font-semibold mb-4">
-              Quick Links
-            </h3>
+            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
-              <li>
-                <Link
-                  to="/"
-                  className="text-white/90 hover:text-white transition-all-smooth hover:translate-x-2"
-                >
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/venues"
-                  className="text-white/90 hover:text-white transition-all-smooth hover:translate-x-2"
-                >
-                  Venues
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/about"
-                  className="text-white/90 hover:text-white transition-all-smooth hover:translate-x-2"
-                >
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/contact"
-                  className="text-white/90 hover:text-white transition-all-smooth hover:translate-x-2"
-                >
-                  Contact
-                </Link>
-              </li>
+              {quickLinks.map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.href}
+                    onClick={scrollToTop}
+                    className="text-gray-300 hover:text-venue-purple transition-colors text-sm"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Contact Info */}
+          {/* Venue Types */}
           <div>
-            <h3 className="text-white font-semibold mb-4">
-              Contact Info
-            </h3>
-            <ul className="space-y-3">
-              <li className="flex items-center space-x-2 group">
-                <Mail
-                  size={16}
-                  className="text-white/80 transition-transform-smooth group-hover:scale-125"
-                />
-                <span className="text-white/90">info@venuekart.com</span>
-              </li>
-              <li className="flex items-center space-x-2 group">
-                <Phone
-                  size={16}
-                  className="text-white/80 transition-transform-smooth group-hover:scale-125"
-                />
-                <span className="text-white/90">+91 98765 43210</span>
-              </li>
-              <li className="flex items-center space-x-2 group">
-                <MapPin
-                  size={16}
-                  className="text-white/80 transition-transform-smooth group-hover:scale-125"
-                />
-                <span className="text-white/90">Mumbai, India</span>
-              </li>
+            <h3 className="text-lg font-semibold mb-4">Venue Types</h3>
+            <ul className="space-y-2">
+              {venueTypes.map((type) => (
+                <li key={type.name}>
+                  <Link
+                    to={type.href}
+                    onClick={scrollToTop}
+                    className="text-gray-300 hover:text-venue-purple transition-colors text-sm"
+                  >
+                    {type.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact & Support */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Contact & Support</h3>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Mail className="h-4 w-4 text-venue-purple" />
+                <span className="text-gray-300 text-sm">info@venuekart.in</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Phone className="h-4 w-4 text-venue-purple" />
+                <span className="text-gray-300 text-sm">8806621666</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <MapPin className="h-4 w-4 text-venue-purple mt-1" />
+                <span className="text-gray-300 text-sm">Pune, Maharashtra, India</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Legal & Policies */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Legal & Policies</h3>
+            <ul className="space-y-2">
+              {legal.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    to={item.href}
+                    onClick={scrollToTop}
+                    className="text-gray-300 hover:text-venue-purple transition-colors text-sm"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/20 mt-8 pt-8 text-center">
-          <p className="text-white/90 transition-colors-smooth hover:text-white">
-            © 2025 VenueKart. All rights reserved. | Built with ❤️ by the
-            VenueKart Team
-          </p>
+        <div className="border-t border-gray-700 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-300 text-sm">
+              © 2025 VenueKart. All rights reserved.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <Link to="/terms" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
+                Terms & Conditions
+              </Link>
+              <Link to="/privacy" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
+                Privacy Policy
+              </Link>
+              <Link to="/cookies" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
+                Cookie Policy
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

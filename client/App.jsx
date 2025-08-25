@@ -1,3 +1,4 @@
+import React from "react";
 import "./global.css";
 
 import { Toaster } from "@/components/ui/toaster";
@@ -9,19 +10,34 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
-import Home from "./pages/Home";
+import Index from "./pages/Index";
 import Venues from "./pages/Venues";
-import VenueDetails from "./pages/VenueDetails";
+import VenueDetail from "./pages/VenueDetail";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
-import AdminDashboard from "./pages/AdminDashboard";
-
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
-import AuthCallback from "./pages/AuthCallback";
+import VerifyOTP from "./pages/VerifyOTP";
+import AdminDashboard from "./pages/AdminDashboard";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const Layout = ({ children }) => (
+  <>
+    <Navigation />
+    {children}
+    <Footer />
+  </>
+);
+
+const AuthLayout = ({ children }) => (
+  <>
+    <Navigation />
+    {children}
+  </>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -30,26 +46,22 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="min-h-screen flex flex-col">
-            <Navigation />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/venues" element={<Venues />} />
-                <Route path="/venue/:id" element={<VenueDetails />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-
-                <Route path="/signin" element={<SignIn />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
+          <Routes>
+            <Route path="/" element={<Layout><Index /></Layout>} />
+            <Route path="/venues" element={<Layout><Venues /></Layout>} />
+            <Route path="/venue/:id" element={<Layout><VenueDetail /></Layout>} />
+            <Route path="/favorites" element={<Layout><Favorites /></Layout>} />
+            <Route path="/about" element={<Layout><About /></Layout>} />
+            <Route path="/contact" element={<Layout><Contact /></Layout>} />
+            <Route path="/signin" element={<AuthLayout><SignIn /></AuthLayout>} />
+            <Route path="/signup" element={<AuthLayout><SignUp /></AuthLayout>} />
+            <Route path="/verify-otp" element={<AuthLayout><VerifyOTP /></AuthLayout>} />
+            {/* Admin Dashboard Route */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<Layout><NotFound /></Layout>} />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

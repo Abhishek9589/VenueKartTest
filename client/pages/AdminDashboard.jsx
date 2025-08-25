@@ -1,565 +1,987 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { NotificationContainer, useNotifications } from '@/components/ui/notification';
+import { useAuth } from '../contexts/AuthContext';
+import AddVenueForm from '@/components/AddVenueForm';
+import EditVenueForm from '@/components/EditVenueForm';
 import {
-  Plus,
-  Home,
   Building,
-  Users,
-  MessageSquare,
+  Home,
+  Calendar,
   BarChart3,
   Settings,
-  Bell,
-  Search,
-  Filter,
-  Edit,
-  Trash2,
-  Eye,
-  Calendar,
-  DollarSign,
-  Star,
-  MapPin,
-  Upload,
+  LogOut,
+  Menu,
   X,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+  Plus,
+  Users,
+  MapPin,
+  DollarSign,
+  Trash2
+} from 'lucide-react';
 
-const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [notifications] = useState([
-    {
-      id: 1,
-      type: "inquiry",
-      message: "New booking inquiry for Grand Palace Hotel",
-      client: "Priya Sharma",
-      venue: "Grand Palace Hotel",
-      time: "2 hours ago",
-      read: false,
-    },
-    {
-      id: 2,
-      type: "booking",
-      message: "Booking confirmed for Royal Convention Center",
-      client: "Rajesh Kumar",
-      venue: "Royal Convention Center",
-      time: "5 hours ago",
-      read: false,
-    },
-    {
-      id: 3,
-      type: "review",
-      message: "New 5-star review received",
-      client: "Anjali Patel",
-      venue: "Sunset Garden Resort",
-      time: "1 day ago",
-      read: true,
-    },
-  ]);
+// API service functions
+const getAuthHeader = () => {
+  const token = localStorage.getItem('accessToken');
+  return { 'Authorization': `Bearer ${token}` };
+};
 
-  const [venues] = useState([
-    {
-      id: 1,
-      name: "Grand Palace Hotel",
-      location: "Bandra, Mumbai",
-      price: 50000,
-      capacity: 500,
-      status: "active",
-      bookings: 12,
-      rating: 4.8,
-      image: "/placeholder.svg",
-    },
-    {
-      id: 2,
-      name: "Royal Convention Center",
-      location: "Delhi",
-      price: 75000,
-      capacity: 1000,
-      status: "active",
-      bookings: 8,
-      rating: 4.7,
-      image: "/placeholder.svg",
-    },
-    {
-      id: 3,
-      name: "Sunset Garden Resort",
-      location: "Goa",
-      price: 35000,
-      capacity: 300,
-      status: "pending",
-      bookings: 5,
-      rating: 4.9,
-      image: "/placeholder.svg",
-    },
-  ]);
-
-  const [stats] = useState({
-    totalVenues: 15,
-    activeBookings: 25,
-    totalRevenue: 2850000,
-    pendingInquiries: 8,
-    thisMonthBookings: 12,
-    averageRating: 4.7,
+const apiCall = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+      ...options.headers
+    }
   });
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(price);
+  if (!response.ok) {
+    let errorMessage = `API call failed: ${response.statusText}`;
+
+    try {
+      const errorData = await response.json();
+      if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    } catch (e) {
+      // If we can't parse the response as JSON, use the status text
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+};
+
+export default function AdminDashboard() {
+  const [activeSection, setActiveSection] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { notifications, removeNotification, showSuccess, showError } = useNotifications();
+  const [showAddVenueForm, setShowAddVenueForm] = useState(false);
+  const [showEditVenueForm, setShowEditVenueForm] = useState(false);
+  const [editingVenue, setEditingVenue] = useState(null);
+  const [venues, setVenues] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalVenues: 0,
+    activeVenues: 0,
+    totalBookings: 0,
+    pendingBookings: 0,
+    totalRevenue: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout, isVenueOwner } = useAuth();
+
+  useEffect(() => {
+    // Check if user is authenticated as venue owner
+    if (!user || !isVenueOwner()) {
+      navigate('/signin');
+    } else {
+      loadDashboardData();
+    }
+  }, [user, isVenueOwner, navigate]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        loadVenues(),
+        loadBookings(),
+        loadDashboardStats()
+      ]);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const NotificationDropdown = () => (
-    <div className="absolute right-0 top-12 w-80 bg-white rounded-lg shadow-lg border border-venue-cream-dark z-50">
-      <div className="p-4 border-b border-venue-cream-dark">
-        <h3 className="font-semibold text-venue-text-dark">Notifications</h3>
+  const loadVenues = async () => {
+    try {
+      const data = await apiCall('/api/venues/owner/my-venues');
+      setVenues(data);
+    } catch (error) {
+      console.error('Error loading venues:', error);
+    }
+  };
+
+  const loadBookings = async () => {
+    try {
+      const data = await apiCall('/api/bookings/owner?limit=10');
+      setBookings(data);
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+    }
+  };
+
+  const loadDashboardStats = async () => {
+    try {
+      const data = await apiCall('/api/venues/owner/dashboard-stats');
+      setDashboardStats(data);
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const menuItems = [
+    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'venues', label: 'Venues', icon: Building },
+    { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'settings', label: 'Settings', icon: Settings }
+  ];
+
+  const handleEmailVerification = async () => {
+    if (!emailOtp.trim()) {
+      showError('Please enter the verification code');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiCall('/api/auth/verify-email-update', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: pendingEmailUpdate,
+          otp: emailOtp
+        })
+      });
+
+      // Update successful
+      setShowEmailVerification(false);
+      setIsEditingAccount(false);
+      setPendingEmailUpdate('');
+      setEmailOtp('');
+      setAccountData(prev => ({ ...prev, password: '' }));
+      showSuccess('Email verified and profile updated successfully!');
+
+      // You might want to update user context here with response.user
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      showError(error.message || 'Failed to verify email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderOverview = () => (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-venue-dark">Dashboard Overview</h1>
+        <p className="text-gray-600">Welcome back! Here's what's happening with your venues.</p>
       </div>
-      <div className="max-h-96 overflow-y-auto">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`p-4 border-b border-venue-cream-dark hover:bg-venue-cream transition-colors-smooth ${
-              !notification.read ? "bg-venue-purple-lighter/20" : ""
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <div className={`p-2 rounded-full ${
-                notification.type === "inquiry" ? "bg-blue-100 text-blue-600" :
-                notification.type === "booking" ? "bg-green-100 text-green-600" :
-                "bg-yellow-100 text-yellow-600"
-              }`}>
-                {notification.type === "inquiry" ? <MessageSquare size={16} /> :
-                 notification.type === "booking" ? <CheckCircle size={16} /> :
-                 <Star size={16} />}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Venues</p>
+                <p className="text-3xl font-bold text-venue-dark">{loading ? '...' : dashboardStats.totalVenues}</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-venue-text-dark">{notification.message}</p>
-                <p className="text-xs text-venue-text-light">From: {notification.client}</p>
-                <p className="text-xs text-venue-text-light">{notification.time}</p>
+              <Building className="h-8 w-8 text-venue-indigo" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                <p className="text-3xl font-bold text-venue-dark">{loading ? '...' : dashboardStats.totalBookings}</p>
               </div>
-              {!notification.read && (
-                <div className="w-2 h-2 bg-venue-purple rounded-full"></div>
+              <Calendar className="h-8 w-8 text-venue-indigo" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Revenue</p>
+                <p className="text-3xl font-bold text-venue-dark">
+                  {loading ? '...' : `₹${dashboardStats.totalRevenue.toLocaleString()}`}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-venue-indigo" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Venues</p>
+                <p className="text-3xl font-bold text-venue-dark">{loading ? '...' : dashboardStats.activeVenues}</p>
+              </div>
+              <Users className="h-8 w-8 text-venue-indigo" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Bookings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Bookings</CardTitle>
+          <CardDescription>Latest venue bookings from customers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {loading ? (
+              <div className="text-center py-4 text-gray-500">Loading bookings...</div>
+            ) : bookings.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No bookings yet</div>
+            ) : (
+              bookings.slice(0, 3).map((booking) => (
+                <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-semibold text-venue-dark">{booking.customer_name}</h4>
+                    <p className="text-sm text-gray-600">{booking.venue_name} • {new Date(booking.event_date).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-venue-dark">₹{booking.amount.toLocaleString()}</p>
+                    <p className={`text-sm ${booking.status === 'confirmed' ? 'text-green-600' : booking.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'}`}>
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderVenues = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-venue-dark">Venue Management</h1>
+          <p className="text-gray-600">Manage your venue listings and details</p>
+        </div>
+        <Button
+          className="bg-venue-indigo hover:bg-venue-purple text-white"
+          onClick={() => setShowAddVenueForm(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add New Venue
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {loading ? (
+          <div className="col-span-full text-center py-8 text-gray-500">Loading venues...</div>
+        ) : venues.length === 0 ? (
+          <div className="col-span-full text-center py-8 text-gray-500">
+            <Building className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No venues yet. Add your first venue to get started!</p>
+          </div>
+        ) : (
+          venues.map((venue) => (
+            <Card key={venue.id}>
+              <CardContent className="p-6">
+                <div className="flex gap-4">
+                  <img
+                    src={venue.images && venue.images.length > 0 ? venue.images[0] : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop"}
+                    alt={venue.name}
+                    className="w-24 h-24 object-cover rounded-lg"
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-venue-dark mb-2">{venue.name}</h3>
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {venue.location}
+                      </div>
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-1" />
+                        {venue.capacity} guests
+                      </div>
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        ₹{venue.price_per_day ? parseFloat(venue.price_per_day).toLocaleString() : 'N/A'}
+                      </div>
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {venue.booking_count || 0} bookings
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${venue.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {venue.status ? venue.status.charAt(0).toUpperCase() + venue.status.slice(1) : 'Active'}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditForm(venue)}
+                        >
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="outline">View</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteVenue(venue.id, venue.name)}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderBookings = () => (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-venue-dark">Booking Overview</h1>
+        <p className="text-gray-600">Track and manage venue bookings</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All Bookings</CardTitle>
+          <CardDescription>Complete list of venue bookings with customer details</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-4">Customer</th>
+                  <th className="text-left p-4">Venue</th>
+                  <th className="text-left p-4">Event Date</th>
+                  <th className="text-left p-4">Guests</th>
+                  <th className="text-left p-4">Amount</th>
+                  <th className="text-left p-4">Status</th>
+                  <th className="text-left p-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="p-8 text-center text-gray-500">Loading bookings...</td>
+                  </tr>
+                ) : bookings.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="p-8 text-center text-gray-500">No bookings found</td>
+                  </tr>
+                ) : (
+                  bookings.map((booking) => (
+                    <tr key={booking.id} className="border-b">
+                      <td className="p-4">
+                        <div>
+                          <p className="font-medium">{booking.customer_name}</p>
+                          <p className="text-sm text-gray-600">{booking.customer_email}</p>
+                        </div>
+                      </td>
+                      <td className="p-4">{booking.venue_name}</td>
+                      <td className="p-4">{new Date(booking.event_date).toLocaleDateString()}</td>
+                      <td className="p-4">{booking.guest_count}</td>
+                      <td className="p-4">₹{booking.amount.toLocaleString()}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">View</Button>
+                          <Button size="sm" variant="outline">Contact</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderAnalytics = () => (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-venue-dark">Analytics</h1>
+        <p className="text-gray-600">View performance metrics and insights</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Venue Performance</CardTitle>
+            <CardDescription>Views and bookings by venue</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {loading ? (
+                <div className="text-center py-4 text-gray-500">Loading analytics...</div>
+              ) : venues.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">No venues to analyze</div>
+              ) : (
+                venues.map((venue) => (
+                  <div key={venue.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{venue.name}</p>
+                      <p className="text-sm text-gray-600">{venue.booking_count || 0} bookings</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{venue.capacity || 0} guests</p>
+                      <p className="text-sm text-gray-600">Capacity</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Analytics</CardTitle>
+            <CardDescription>Monthly revenue breakdown</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {loading ? (
+                <div className="text-center py-4 text-gray-500">Loading revenue data...</div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span>Total Revenue</span>
+                    <span className="font-semibold">₹{dashboardStats.totalRevenue.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Average per Booking</span>
+                    <span className="font-semibold">
+                      ₹{dashboardStats.totalBookings > 0 ? Math.round(dashboardStats.totalRevenue / dashboardStats.totalBookings).toLocaleString() : '0'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Pending Revenue</span>
+                    <span className="font-semibold text-yellow-600">
+                      ₹{bookings.filter(b => b.status === 'pending').reduce((sum, b) => sum + b.amount, 0).toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const [accountData, setAccountData] = useState({
+    name: '',
+    email: '',
+    mobileNumber: '',
+    password: ''
+  });
+  const [accountErrors, setAccountErrors] = useState({});
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [pendingEmailUpdate, setPendingEmailUpdate] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setAccountData({
+        name: user.name || '',
+        email: user.email || '',
+        mobileNumber: user.mobileNumber || user.mobile_number || '',
+        password: ''
+      });
+    }
+  }, [user]);
+
+  const handleAccountChange = (field, value) => {
+    setAccountData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user starts typing
+    if (accountErrors[field]) {
+      setAccountErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const validateAccountData = () => {
+    const newErrors = {};
+
+    if (!accountData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+    if (!accountData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (accountData.mobileNumber && !/^[0-9]{10}$/.test(accountData.mobileNumber.replace(/\s+/g, ''))) {
+      newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number';
+    }
+    if (accountData.password && accountData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters long';
+    }
+
+    setAccountErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveAccount = async () => {
+    if (!validateAccountData()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const updateData = {
+        name: accountData.name,
+        email: accountData.email,
+        mobileNumber: accountData.mobileNumber
+      };
+
+      // Only include password if it's provided
+      if (accountData.password) {
+        updateData.password = accountData.password;
+      }
+
+      const response = await apiCall('/api/auth/update-profile', {
+        method: 'PUT',
+        body: JSON.stringify(updateData)
+      });
+
+      if (response.requiresVerification) {
+        // Email verification required
+        setPendingEmailUpdate(response.newEmail);
+        setShowEmailVerification(true);
+        showSuccess('Verification code sent to your new email address. Please check your email.');
+      } else {
+        // Normal update successful
+        setIsEditingAccount(false);
+        setAccountData(prev => ({ ...prev, password: '' })); // Clear password field
+        showSuccess('Your profile has been updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+
+      // Try to get a more specific error message from the response
+      let errorMessage = 'Failed to update profile. Please try again.';
+      if (error.message && error.message !== 'API call failed: ') {
+        errorMessage = error.message;
+      }
+
+      showError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-venue-dark">Account Settings</h1>
+        <p className="text-gray-600">Manage your account preferences and information</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Information</CardTitle>
+          <CardDescription>Update your basic account details</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Name</label>
+              <Input
+                value={accountData.name}
+                onChange={(e) => handleAccountChange('name', e.target.value)}
+                placeholder="Enter your name"
+                className={`mt-1 ${accountErrors.name ? 'border-red-500' : ''}`}
+                disabled={!isEditingAccount}
+              />
+              {accountErrors.name && (
+                <p className="text-red-500 text-sm mt-1">{accountErrors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Email</label>
+              <Input
+                value={accountData.email}
+                onChange={(e) => handleAccountChange('email', e.target.value)}
+                placeholder="Enter your email"
+                className={`mt-1 ${accountErrors.email ? 'border-red-500' : ''}`}
+                disabled={!isEditingAccount}
+              />
+              {accountErrors.email && (
+                <p className="text-red-500 text-sm mt-1">{accountErrors.email}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Mobile Number</label>
+              <Input
+                value={accountData.mobileNumber}
+                onChange={(e) => handleAccountChange('mobileNumber', e.target.value)}
+                placeholder="Enter your mobile number"
+                className={`mt-1 ${accountErrors.mobileNumber ? 'border-red-500' : ''}`}
+                disabled={!isEditingAccount}
+              />
+              {accountErrors.mobileNumber && (
+                <p className="text-red-500 text-sm mt-1">{accountErrors.mobileNumber}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Password {isEditingAccount && '(Leave blank to keep current password)'}
+              </label>
+              <Input
+                type="password"
+                value={accountData.password}
+                onChange={(e) => handleAccountChange('password', e.target.value)}
+                placeholder={isEditingAccount ? "Enter new password (optional)" : "••••••••"}
+                className={`mt-1 ${accountErrors.password ? 'border-red-500' : ''}`}
+                disabled={!isEditingAccount}
+              />
+              {accountErrors.password && (
+                <p className="text-red-500 text-sm mt-1">{accountErrors.password}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">User Type</label>
+              <Input
+                value={user?.userType === 'venue-owner' ? 'Venue Owner' : 'Customer'}
+                className="mt-1"
+                disabled
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              {!isEditingAccount ? (
+                <Button
+                  onClick={() => setIsEditingAccount(true)}
+                  className="bg-venue-indigo hover:bg-venue-purple text-white"
+                >
+                  Edit Profile
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleSaveAccount}
+                    disabled={loading}
+                    className="bg-venue-indigo hover:bg-venue-purple text-white"
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsEditingAccount(false);
+                      setAccountErrors({});
+                      // Reset data to original values
+                      setAccountData({
+                        name: user?.name || '',
+                        email: user?.email || '',
+                        mobileNumber: user?.mobileNumber || '',
+                        password: ''
+                      });
+                    }}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </>
               )}
             </div>
           </div>
-        ))}
-      </div>
-      <div className="p-4 text-center">
-        <button className="text-venue-purple text-sm hover:underline">View all notifications</button>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
-  const UploadVenueModal = () => (
-    <div className="fixed inset-0 bg-venue-primary-accent/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-venue-shadow">
-        <div className="p-6 border-b border-venue-border flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-venue-text-primary">Add New Venue</h2>
-          <button
-            onClick={() => setShowUploadModal(false)}
-            className="text-venue-text-secondary hover:text-venue-text-primary"
-          >
-            <X size={24} />
-          </button>
-        </div>
-        <form className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-venue-text-primary mb-2">
-                Venue Name *
-              </label>
-              <input
-                type="text"
-                className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                placeholder="Enter venue name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-venue-text-primary mb-2">
-                Venue Type *
-              </label>
-              <select className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent">
-                <option>Wedding Hall</option>
-                <option>Conference Center</option>
-                <option>Banquet Hall</option>
-                <option>Resort</option>
-                <option>Restaurant</option>
-                <option>Garden</option>
-              </select>
-            </div>
-          </div>
+  const handleAddVenue = async (venueData) => {
+    try {
+      setLoading(true);
+      await apiCall('/api/venues', {
+        method: 'POST',
+        body: JSON.stringify(venueData)
+      });
 
-          <div>
-            <label className="block text-sm font-medium text-venue-text-dark mb-2">
-              Location *
-            </label>
-            <input
-              type="text"
-              className="w-full p-3 border border-venue-cream-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-purple"
-              placeholder="City, State"
-            />
-          </div>
+      // Reload venues and stats after successful creation
+      await loadVenues();
+      await loadDashboardStats();
 
-          <div>
-            <label className="block text-sm font-medium text-venue-text-dark mb-2">
-              Full Address *
-            </label>
-            <textarea
-              className="w-full p-3 border border-venue-cream-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-purple"
-              rows="3"
-              placeholder="Complete address with pincode"
-            ></textarea>
-          </div>
+      setShowAddVenueForm(false);
+    } catch (error) {
+      console.error('Error adding venue:', error);
+      alert('Failed to add venue. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-venue-text-primary mb-2">
-                Price (₹) *
-              </label>
-              <input
-                type="number"
-                className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                placeholder="50000"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-venue-text-primary mb-2">
-                Min Capacity *
-              </label>
-              <input
-                type="number"
-                className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                placeholder="50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-venue-text-primary mb-2">
-                Max Capacity *
-              </label>
-              <input
-                type="number"
-                className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                placeholder="500"
-              />
-            </div>
-          </div>
+  const handleEditVenue = async (updatedVenueData) => {
+    try {
+      setLoading(true);
+      await apiCall(`/api/venues/${updatedVenueData.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedVenueData)
+      });
 
-          <div>
-            <label className="block text-sm font-medium text-venue-text-dark mb-2">
-              Description *
-            </label>
-            <textarea
-              className="w-full p-3 border border-venue-cream-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-purple"
-              rows="4"
-              placeholder="Detailed description of the venue"
-            ></textarea>
-          </div>
+      // Reload venues after successful update
+      await loadVenues();
 
-          <div>
-            <label className="block text-sm font-medium text-venue-text-dark mb-2">
-              Facilities
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {["WiFi", "Parking", "Catering", "Music System", "Photography", "Bar", "AC", "Security"].map((facility) => (
-                <label key={facility} className="flex items-center gap-2">
-                  <input type="checkbox" className="text-venue-purple" />
-                  <span className="text-sm text-venue-text-dark">{facility}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+      setShowEditVenueForm(false);
+      setEditingVenue(null);
+    } catch (error) {
+      console.error('Error updating venue:', error);
+      alert('Failed to update venue. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          <div>
-            <label className="block text-sm font-medium text-venue-text-dark mb-2">
-              Venue Images *
-            </label>
-            <div className="border-2 border-dashed border-venue-cream-dark rounded-lg p-6 text-center">
-              <Upload className="mx-auto mb-2 text-venue-text-light" size={48} />
-              <p className="text-venue-text-light mb-2">Click to upload or drag and drop</p>
-              <p className="text-xs text-venue-text-light">PNG, JPG up to 10MB (minimum 5 images)</p>
-              <input type="file" multiple accept="image/*" className="hidden" />
-            </div>
-          </div>
+  const openEditForm = (venue) => {
+    setEditingVenue(venue);
+    setShowEditVenueForm(true);
+  };
 
-          <div className="flex gap-4 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowUploadModal(false)}
-              className="flex-1 border border-venue-border text-venue-text-primary py-3 rounded-lg font-medium hover:bg-venue-muted-bg transition-colors-smooth"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary flex-1 py-3 rounded-lg font-medium"
-            >
-              Upload Venue
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+  const handleDeleteVenue = async (venueId, venueName) => {
+    if (!window.confirm(`Are you sure you want to delete "${venueName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await apiCall(`/api/venues/${venueId}`, {
+        method: 'DELETE'
+      });
+
+      // Reload venues and stats after successful deletion
+      await loadVenues();
+      await loadDashboardStats();
+    } catch (error) {
+      console.error('Error deleting venue:', error);
+      showError('Failed to delete venue. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderContent = () => {
-    switch (activeTab) {
-      case "overview":
-        return (
-          <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-venue-text-light text-sm">Total Venues</p>
-                    <p className="text-2xl font-bold text-venue-text-dark">{stats.totalVenues}</p>
-                  </div>
-                  <Building className="text-venue-purple" size={24} />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-venue-text-light text-sm">Active Bookings</p>
-                    <p className="text-2xl font-bold text-venue-text-dark">{stats.activeBookings}</p>
-                  </div>
-                  <Calendar className="text-green-500" size={24} />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-venue-text-light text-sm">Total Revenue</p>
-                    <p className="text-2xl font-bold text-venue-text-dark">{formatPrice(stats.totalRevenue)}</p>
-                  </div>
-                  <DollarSign className="text-green-500" size={24} />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-venue-text-light text-sm">Pending Inquiries</p>
-                    <p className="text-2xl font-bold text-venue-text-dark">{stats.pendingInquiries}</p>
-                  </div>
-                  <MessageSquare className="text-orange-500" size={24} />
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-venue-text-dark mb-4">Recent Activity</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-3 bg-venue-cream rounded-lg">
-                  <div className="p-2 bg-green-100 rounded-full">
-                    <CheckCircle className="text-green-600" size={16} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-venue-text-dark">New booking confirmed</p>
-                    <p className="text-sm text-venue-text-light">Grand Palace Hotel - Wedding event for 300 guests</p>
-                  </div>
-                  <span className="text-sm text-venue-text-light">2 hours ago</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 bg-venue-cream rounded-lg">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <MessageSquare className="text-blue-600" size={16} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-venue-text-dark">New inquiry received</p>
-                    <p className="text-sm text-venue-text-light">Royal Convention Center - Corporate event inquiry</p>
-                  </div>
-                  <span className="text-sm text-venue-text-light">5 hours ago</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "venues":
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-venue-text-dark">My Venues</h2>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="btn-primary px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Plus size={20} />
-                Add New Venue
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {venues.map((venue) => (
-                <div key={venue.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <img src={venue.image} alt={venue.name} className="w-full h-48 object-cover" />
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-venue-text-dark">{venue.name}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        venue.status === "active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        {venue.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-venue-text-light text-sm mb-2">
-                      <MapPin size={14} />
-                      <span>{venue.location}</span>
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="font-bold text-venue-purple">{formatPrice(venue.price)}</span>
-                      <div className="flex items-center gap-1">
-                        <Star size={14} className="text-yellow-400 fill-current" />
-                        <span className="text-sm">{venue.rating}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="flex-1 bg-venue-purple-light hover:bg-venue-purple text-white py-2 rounded text-sm transition-colors-smooth">
-                        <Eye size={16} className="inline mr-1" />
-                        View
-                      </button>
-                      <button className="flex-1 border border-venue-purple text-venue-purple hover:bg-venue-purple hover:text-white py-2 rounded text-sm transition-colors-smooth">
-                        <Edit size={16} className="inline mr-1" />
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
+    switch (activeSection) {
+      case 'overview':
+        return renderOverview();
+      case 'venues':
+        return renderVenues();
+      case 'bookings':
+        return renderBookings();
+      case 'analytics':
+        return renderAnalytics();
+      case 'settings':
+        return renderSettings();
       default:
-        return <div>Content for {activeTab}</div>;
+        return renderOverview();
     }
   };
 
   return (
-    <div className="min-h-screen bg-venue-cream-light">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-venue-cream-dark">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link to="/" className="text-venue-purple hover:text-venue-purple-dark">
-                <Home size={24} />
-              </Link>
-              <h1 className="text-xl font-semibold text-venue-text-dark">Admin Dashboard</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 text-venue-text-light hover:text-venue-purple rounded-full hover:bg-venue-cream transition-all-smooth"
-                >
-                  <Bell size={20} />
-                  {notifications.filter(n => !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {notifications.filter(n => !n.read).length}
-                    </span>
-                  )}
-                </button>
-                {showNotifications && <NotificationDropdown />}
-              </div>
-              <Link
-                to="/signin"
-                className="text-venue-text-light hover:text-venue-purple"
-              >
-                Logout
-              </Link>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+        <div className="flex items-center justify-between h-16 px-6 border-b">
+          <h1 className="text-xl font-bold text-venue-dark">Admin Portal</h1>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/')}
+              title="Close Admin Portal"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <div className="w-64 bg-white rounded-lg shadow-md p-6 h-fit">
-            <nav className="space-y-2">
+        <nav className="mt-6 px-4">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
               <button
-                onClick={() => setActiveTab("overview")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors-smooth ${
-                  activeTab === "overview"
-                    ? "bg-venue-purple text-white"
-                    : "text-venue-text-dark hover:bg-venue-cream"
+                key={item.id}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center px-3 py-2 rounded-lg mb-1 transition-colors text-sm ${
+                  activeSection === item.id
+                    ? 'bg-venue-indigo text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <BarChart3 size={20} />
-                Overview
+                <Icon className="h-4 w-4 mr-2" />
+                {item.label}
               </button>
-              <button
-                onClick={() => setActiveTab("venues")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors-smooth ${
-                  activeTab === "venues"
-                    ? "bg-venue-purple text-white"
-                    : "text-venue-text-dark hover:bg-venue-cream"
-                }`}
-              >
-                <Building size={20} />
-                My Venues
-              </button>
-              <button
-                onClick={() => setActiveTab("bookings")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors-smooth ${
-                  activeTab === "bookings"
-                    ? "bg-venue-purple text-white"
-                    : "text-venue-text-dark hover:bg-venue-cream"
-                }`}
-              >
-                <Calendar size={20} />
-                Bookings
-              </button>
-              <button
-                onClick={() => setActiveTab("inquiries")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors-smooth ${
-                  activeTab === "inquiries"
-                    ? "bg-venue-purple text-white"
-                    : "text-venue-text-dark hover:bg-venue-cream"
-                }`}
-              >
-                <MessageSquare size={20} />
-                Inquiries
-              </button>
-              <button
-                onClick={() => setActiveTab("analytics")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors-smooth ${
-                  activeTab === "analytics"
-                    ? "bg-venue-purple text-white"
-                    : "text-venue-text-dark hover:bg-venue-cream"
-                }`}
-              >
-                <BarChart3 size={20} />
-                Analytics
-              </button>
-              <button
-                onClick={() => setActiveTab("settings")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors-smooth ${
-                  activeTab === "settings"
-                    ? "bg-venue-purple text-white"
-                    : "text-venue-text-dark hover:bg-venue-cream"
-                }`}
-              >
-                <Settings size={20} />
-                Settings
-              </button>
-            </nav>
-          </div>
+            );
+          })}
+        </nav>
 
-          {/* Main Content */}
-          <div className="flex-1">
-            {renderContent()}
-          </div>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </div>
 
-      {/* Upload Modal */}
-      {showUploadModal && <UploadVenueModal />}
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-0">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="flex items-center justify-between h-16 px-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">
+                Welcome back, {user?.name || 'Admin'}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="p-6">
+          {renderContent()}
+        </main>
+      </div>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <AddVenueForm
+        isOpen={showAddVenueForm}
+        onClose={() => setShowAddVenueForm(false)}
+        onSubmit={handleAddVenue}
+      />
+
+      <EditVenueForm
+        isOpen={showEditVenueForm}
+        onClose={() => {
+          setShowEditVenueForm(false);
+          setEditingVenue(null);
+        }}
+        onSubmit={handleEditVenue}
+        venue={editingVenue}
+      />
+
+      {/* Email Verification Modal */}
+      {showEmailVerification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Verify Your New Email</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600">
+                We've sent a verification code to <strong>{pendingEmailUpdate}</strong>
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Verification Code
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={emailOtp}
+                  onChange={(e) => setEmailOtp(e.target.value)}
+                  className="w-full"
+                  maxLength={6}
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleEmailVerification}
+                  disabled={loading}
+                  className="flex-1 bg-venue-indigo hover:bg-venue-purple text-white"
+                >
+                  {loading ? 'Verifying...' : 'Verify Email'}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowEmailVerification(false);
+                    setPendingEmailUpdate('');
+                    setEmailOtp('');
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Notification Container */}
+      <NotificationContainer
+        notifications={notifications}
+        removeNotification={removeNotification}
+      />
     </div>
   );
-};
-
-export default AdminDashboard;
+}

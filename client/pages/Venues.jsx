@@ -1,399 +1,501 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { scrollToTop } from '@/lib/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useFavorites } from '../hooks/useFavorites';
+import { useAuth } from '../contexts/AuthContext';
 import {
   MapPin,
   Users,
-  Star,
-  DollarSign,
-  Wifi,
-  Car,
-  Coffee,
-  Music,
-  Camera,
-  Utensils,
   Filter,
   X,
-} from "lucide-react";
+  SlidersHorizontal,
+  Heart,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 
-const Venues = () => {
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState({
-    venueType: "",
-    location: "",
-    priceMin: "",
-    priceMax: "",
-    capacity: "",
+// API service functions
+const apiCall = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
   });
 
-  // Removed scroll reveal for stability
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.statusText}`);
+  }
 
-  const venueTypes = [
-    "Wedding Hall",
-    "Conference Center",
-    "Banquet Hall",
-    "Resort",
-    "Hotel",
-    "Restaurant",
-    "Garden",
-    "Beachside",
-  ];
+  return response.json();
+};
 
-  const venues = [
-    {
-      id: 1,
-      name: "Grand Palace Hotel",
-      location: "Bandra, Mumbai",
-      image: "/placeholder.svg",
-      rating: 4.8,
-      reviews: 124,
-      price: 50000,
-      capacity: 500,
-      description:
-        "Luxurious wedding venue with stunning architecture and world-class amenities.",
-      facilities: ["Wifi", "Parking", "Catering", "Music", "Photography"],
-      type: "Wedding Hall",
-    },
-    {
-      id: 2,
-      name: "Sunset Garden Resort",
-      location: "Anjuna, Goa",
-      image: "/placeholder.svg",
-      rating: 4.9,
-      reviews: 89,
-      price: 35000,
-      capacity: 300,
-      description:
-        "Beautiful beachside resort perfect for destination weddings and corporate retreats.",
-      facilities: ["Wifi", "Parking", "Catering", "Bar"],
-      type: "Resort",
-    },
-    {
-      id: 3,
-      name: "Royal Convention Center",
-      location: "Connaught Place, Delhi",
-      image: "/placeholder.svg",
-      rating: 4.7,
-      reviews: 156,
-      price: 75000,
-      capacity: 1000,
-      description:
-        "Modern convention center ideal for large corporate events and conferences.",
-      facilities: [
-        "Wifi",
-        "Parking",
-        "Catering",
-        "Music",
-        "Photography",
-        "AV Equipment",
-      ],
-      type: "Conference Center",
-    },
-    {
-      id: 4,
-      name: "Beachside Villa",
-      location: "Kovalam, Kerala",
-      image: "/placeholder.svg",
-      rating: 4.9,
-      reviews: 67,
-      price: 25000,
-      capacity: 150,
-      description:
-        "Intimate beachside villa with panoramic ocean views, perfect for small gatherings.",
-      facilities: ["Wifi", "Parking", "Catering"],
-      type: "Beachside",
-    },
-    {
-      id: 5,
-      name: "Heritage Banquet Hall",
-      location: "Rajouri Garden, Delhi",
-      image: "/placeholder.svg",
-      rating: 4.6,
-      reviews: 203,
-      price: 40000,
-      capacity: 400,
-      description:
-        "Traditional banquet hall with modern amenities and excellent catering services.",
-      facilities: ["Wifi", "Parking", "Catering", "Music", "Photography"],
-      type: "Banquet Hall",
-    },
-    {
-      id: 6,
-      name: "Skyline Restaurant",
-      location: "Marine Drive, Mumbai",
-      image: "/placeholder.svg",
-      rating: 4.8,
-      reviews: 91,
-      price: 30000,
-      capacity: 200,
-      description:
-        "Rooftop restaurant with breathtaking city views, ideal for cocktail parties.",
-      facilities: ["Wifi", "Catering", "Bar", "Music"],
-      type: "Restaurant",
-    },
-  ];
+export default function Venues() {
+  const [searchParams] = useSearchParams();
+  const [venues, setVenues] = useState([]);
+  const [filteredVenues, setFilteredVenues] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [venueTypes, setVenueTypes] = useState(["All Types"]);
+  const [locations, setLocations] = useState(["All Locations"]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [venuesPerPage] = useState(20);
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const { isLoggedIn } = useAuth();
 
-  const facilityIcons = {
-    Wifi: Wifi,
-    Parking: Car,
-    Catering: Utensils,
-    Music: Music,
-    Photography: Camera,
-    Bar: Coffee,
-    "AV Equipment": Music,
+  const handleFavoriteClick = async (venueId) => {
+    if (!isLoggedIn) {
+      alert('Please sign in to add venues to your favorites');
+      return;
+    }
+    await toggleFavorite(venueId);
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  // Filter states
+  const [selectedType, setSelectedType] = useState("All Types");
+  const [selectedLocation, setSelectedLocation] = useState("All Locations");
+  const [priceRange, setPriceRange] = useState([0, 100000]);
+  const [capacityRange, setCapacityRange] = useState([0, 1000]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  // Load venues from API
+  useEffect(() => {
+    loadVenues();
+  }, []);
+
+  // Initialize filters from URL params
+  useEffect(() => {
+    const location = searchParams.get('location');
+    const venue = searchParams.get('venue');
+
+    if (location) {
+      setSelectedLocation(location);
+    }
+    if (venue) {
+      setSearchQuery(venue);
+    }
+  }, [searchParams]);
+
+  const loadVenues = async () => {
+    try {
+      setLoading(true);
+      const data = await apiCall('/api/venues?limit=50');
+
+      // Format API venues data
+      const apiVenues = data.map(venue => ({
+        id: venue.id,
+        name: venue.name,
+        location: venue.location,
+        capacity: venue.capacity,
+        price: parseFloat(venue.price_per_day || venue.price),
+        reviews: venue.total_bookings || 0,
+        image: venue.images && venue.images.length > 0 ? venue.images[0] : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop",
+        facilities: venue.facilities || [],
+        type: venue.type || "Venue",
+        description: venue.description || "Beautiful venue perfect for your special events."
+      }));
+
+      setVenues(apiVenues);
+
+      // Extract unique types and locations for filters
+      const uniqueTypes = ["All Types", ...new Set(apiVenues.map(v => v.type).filter(Boolean))];
+      const uniqueLocations = ["All Locations", ...new Set(apiVenues.map(v => v.location).filter(Boolean))];
+
+      setVenueTypes(uniqueTypes);
+      setLocations(uniqueLocations);
+
+      // Set price and capacity ranges based on actual data
+      const prices = apiVenues.map(v => v.price);
+      const capacities = apiVenues.map(v => v.capacity);
+
+      if (prices.length > 0) {
+        const maxPrice = Math.max(...prices);
+        setPriceRange([0, Math.ceil(maxPrice / 1000) * 1000]);
+      }
+
+      if (capacities.length > 0) {
+        const maxCapacity = Math.max(...capacities);
+        setCapacityRange([0, Math.ceil(maxCapacity / 100) * 100]);
+      }
+
+    } catch (error) {
+      console.error('Error loading venues:', error);
+      setVenues([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = venues;
+
+    // Show favorites only filter
+    if (showFavoritesOnly) {
+      filtered = filtered.filter(venue => isFavorite(venue.id));
+    }
+
+    if (selectedType !== "All Types") {
+      filtered = filtered.filter(venue => venue.type === selectedType);
+    }
+
+    if (selectedLocation !== "All Locations") {
+      filtered = filtered.filter(venue => venue.location === selectedLocation);
+    }
+
+    if (searchQuery) {
+      filtered = filtered.filter(venue =>
+        venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        venue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        venue.type.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    filtered = filtered.filter(venue =>
+      venue.price >= priceRange[0] && venue.price <= priceRange[1] &&
+      venue.capacity >= capacityRange[0] && venue.capacity <= capacityRange[1]
+    );
+
+    setFilteredVenues(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [selectedType, selectedLocation, searchQuery, priceRange, capacityRange, showFavoritesOnly, isFavorite]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredVenues.length / venuesPerPage);
+  const startIndex = (currentPage - 1) * venuesPerPage;
+  const endIndex = startIndex + venuesPerPage;
+  const currentVenues = filteredVenues.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const clearFilters = () => {
-    setFilters({
-      venueType: "",
-      location: "",
-      priceMin: "",
-      priceMax: "",
-      capacity: "",
-    });
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(price);
+    setSelectedType("All Types");
+    setSelectedLocation("All Locations");
+    setPriceRange([0, 100000]);
+    setCapacityRange([0, 1000]);
+    setSearchQuery("");
+    setShowFavoritesOnly(false);
+    setCurrentPage(1);
   };
 
   return (
-    <div className="min-h-screen bg-venue-cream">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-4 py-8">
         {/* Header */}
-        <div className="mb-8 animate-fade-in">
-                    <h1 className="text-3xl md:text-4xl font-bold text-venue-text-dark mb-4">
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-venue-dark mb-4">
             Find Your Perfect Venue
           </h1>
-          <p className="text-lg text-venue-text-secondary">
-            Discover amazing venues for your special events
+          <p className="text-gray-600 mb-6">
+            {loading ? 'Loading venues...' : `Discover ${filteredVenues.length} amazing venues for your special occasions`}
           </p>
+
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden mb-4">
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline"
+              className="w-full"
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </Button>
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Filters Sidebar */}
-          <div className="lg:w-1/4">
-            {/* Mobile Filter Toggle */}
-            <button
-              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                            className="btn-primary lg:hidden w-full px-4 py-2 rounded-lg flex items-center justify-between mb-4 hover:scale-105 animate-slide-up"
-            >
-              <span className="flex items-center gap-2">
-                <Filter size={20} />
-                Filters
-              </span>
-              {isFiltersOpen ? <X size={20} /> : <Filter size={20} />}
-            </button>
-
-            {/* Filter Panel */}
-            <div
-              className={`bg-white p-6 rounded-lg shadow-md space-y-6 transition-all-smooth hover-glow animate-fade-in-left ${
-                isFiltersOpen ? "block" : "hidden lg:block"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-venue-text-dark">
-                  Filters
-                </h2>
-                <button
-                  onClick={clearFilters}
-                                    className="text-venue-primary-accent hover:text-venue-primary-accent-hover text-sm font-medium"
-                >
-                  Clear All
-                </button>
+          <div className={`lg:w-72 space-y-6 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-lg font-semibold text-venue-dark flex items-center">
+                    <Filter className="h-5 w-5 mr-2" />
+                    Filters
+                  </h2>
+                  <Button
+                    variant={showFavoritesOnly ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                    className={showFavoritesOnly ? "bg-venue-indigo text-white" : ""}
+                  >
+                    <Heart className={`h-4 w-4 mr-1 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                    Favorites
+                  </Button>
+                </div>
               </div>
 
+              {/* Search */}
+              <div className="space-y-2 mb-6">
+                <label className="text-sm font-medium text-gray-700">Search</label>
+                <Input
+                  placeholder="Search venues..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+
               {/* Venue Type */}
-              <div>
-                <label className="block text-sm font-medium text-venue-text-dark mb-2">
-                  Venue Type
-                </label>
-                <select
-                  value={filters.venueType}
-                  onChange={(e) =>
-                    handleFilterChange("venueType", e.target.value)
-                  }
-                  className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent transition-all-smooth"
-                >
-                  <option value="">All Types</option>
-                  {venueTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2 mb-6">
+                <label className="text-sm font-medium text-gray-700">Venue Type</label>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {venueTypes.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Location */}
-              <div>
-                <label className="block text-sm font-medium text-venue-text-dark mb-2">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={filters.location}
-                  onChange={(e) =>
-                    handleFilterChange("location", e.target.value)
-                  }
-                  placeholder="Enter city or area"
-                  className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent transition-all-smooth"
-                />
+              <div className="space-y-2 mb-6">
+                <label className="text-sm font-medium text-gray-700">Location</label>
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map(location => (
+                      <SelectItem key={location} value={location}>{location}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Price Range */}
-              <div>
-                <label className="block text-sm font-medium text-venue-text-dark mb-2">
-                  Price Range (₹)
+              <div className="space-y-2 mb-6">
+                <label className="text-sm font-medium text-gray-700">
+                  Price Range: ₹{priceRange[0].toLocaleString()} - ₹{priceRange[1].toLocaleString()}
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={filters.priceMin}
-                    onChange={(e) =>
-                      handleFilterChange("priceMin", e.target.value)
-                    }
-                    placeholder="Min"
-                    className="w-1/2 p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent transition-all-smooth"
-                  />
-                  <input
-                    type="number"
-                    value={filters.priceMax}
-                    onChange={(e) =>
-                      handleFilterChange("priceMax", e.target.value)
-                    }
-                    placeholder="Max"
-                    className="w-1/2 p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent transition-all-smooth"
-                  />
-                </div>
-              </div>
-
-              {/* Capacity */}
-              <div>
-                <label className="block text-sm font-medium text-venue-text-dark mb-2">
-                  Minimum Capacity
-                </label>
-                <input
-                  type="number"
-                  value={filters.capacity}
-                  onChange={(e) =>
-                    handleFilterChange("capacity", e.target.value)
-                  }
-                  placeholder="Number of guests"
-                  className="w-full p-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent transition-all-smooth"
+                <Slider
+                  value={priceRange}
+                  onValueChange={setPriceRange}
+                  max={100000}
+                  step={5000}
+                  className="w-full"
                 />
               </div>
 
-              {/* Apply Filters Button */}
-                            <button className="btn-primary w-full py-3 rounded-lg font-semibold hover:scale-105 hover-glow">
-                Apply Filters
-              </button>
-            </div>
+              {/* Capacity Range */}
+              <div className="space-y-2 mb-6">
+                <label className="text-sm font-medium text-gray-700">
+                  Capacity: {capacityRange[0]} - {capacityRange[1]} guests
+                </label>
+                <Slider
+                  value={capacityRange}
+                  onValueChange={setCapacityRange}
+                  max={1000}
+                  step={50}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Clear All Button at Bottom */}
+              <div className="pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear All Filters
+                </Button>
+              </div>
+            </Card>
           </div>
 
-          {/* Venue Cards Grid */}
-          <div className="lg:w-3/4">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {venues.map((venue, index) => (
-                <div
-                  key={venue.id}
-                  className="bg-white rounded-lg shadow-md border border-venue-border overflow-hidden hover:shadow-lg transition-all-smooth hover-lift hover-glow"
-                >
-                  <img
-                    src={venue.image}
-                    alt={venue.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                                            <h3 className="text-lg font-semibold text-venue-text-primary line-clamp-1">
-                        {venue.name}
-                      </h3>
-                      <div className="flex items-center">
-                        <Star
-                          size={16}
-                          className="text-yellow-400 fill-current"
+          {/* Venue Grid */}
+          <div className="flex-1">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array(8).fill(0).map((_, index) => (
+                  <Card key={index} className="overflow-hidden animate-pulse">
+                    <div className="h-56 bg-gray-200"></div>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : filteredVenues.length === 0 && venues.length === 0 ? (
+              <Card className="p-12 text-center">
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No venues available</h3>
+                <p className="text-gray-500 mb-4">Check back later for new venue listings</p>
+              </Card>
+            ) : filteredVenues.length === 0 ? (
+              <Card className="p-12 text-center">
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No venues found</h3>
+                <p className="text-gray-500 mb-4">Try adjusting your filters to see more results</p>
+                <Button onClick={clearFilters} variant="outline">
+                  Clear Filters
+                </Button>
+              </Card>
+            ) : (
+              <>
+                {/* Results Summary */}
+                <div className="flex justify-between items-center mb-6">
+                  <p className="text-gray-600">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredVenues.length)} of {filteredVenues.length} venues
+                  </p>
+                  {totalPages > 1 && (
+                    <div className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                  )}
+                </div>
+
+                {/* Venue Grid - Max 4 cards per row with wider cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr mb-8">
+                  {currentVenues.map((venue) => (
+                    <Card key={venue.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col h-full w-full">
+                      <div className="relative h-56 overflow-hidden">
+                        <img
+                          src={venue.image}
+                          alt={venue.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         />
-                        <span className="ml-1 text-sm font-medium">
-                          {venue.rating}
-                        </span>
-                        <span className="text-xs text-venue-text-secondary ml-1">
-                          ({venue.reviews})
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center text-venue-text-secondary mb-2">
-                      <MapPin size={16} className="mr-1" />
-                      <span className="text-sm">{venue.location}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center text-venue-primary-accent">
-                        <DollarSign size={16} className="mr-1" />
-                        <span className="font-semibold">
-                          {formatPrice(venue.price)}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-venue-text-secondary">
-                        <Users size={16} className="mr-1" />
-                        <span className="text-sm">{venue.capacity} guests</span>
-                      </div>
-                    </div>
-
-                    <p className="text-venue-text-secondary text-sm mb-3 line-clamp-2">
-                      {venue.description}
-                    </p>
-
-                    {/* Facilities */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {venue.facilities.slice(0, 4).map((facility, index) => {
-                        const IconComponent = facilityIcons[facility] || Wifi;
-                        return (
-                          <div
-                            key={index}
-                                                        className="flex items-center gap-1 bg-venue-secondary-bg text-venue-text-primary px-2 py-1 rounded-full text-xs"
+                        <div className="absolute top-4 right-4 flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 bg-white/90 hover:bg-white"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleFavoriteClick(venue.id);
+                            }}
                           >
-                            <IconComponent size={12} />
-                            <span>{facility}</span>
+                            <Heart
+                              className={`h-4 w-4 transition-colors ${
+                                isFavorite(venue.id)
+                                  ? 'text-red-500 fill-red-500'
+                                  : 'text-gray-600 hover:text-red-500'
+                              }`}
+                            />
+                          </Button>
+                        </div>
+                        <div className="absolute top-4 left-4">
+                          <Badge variant="secondary" className="bg-venue-indigo text-white">
+                            {venue.type}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <CardContent className="p-5 flex flex-col flex-1">
+                        <h3 className="text-lg font-semibold text-venue-dark mb-2 group-hover:text-venue-indigo transition-colors line-clamp-1">
+                          {venue.name}
+                        </h3>
+
+                        <div className="flex items-center text-gray-600 mb-3">
+                          <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                          <span className="text-sm line-clamp-1">{venue.location}</span>
+                        </div>
+
+                        <div className="flex items-center text-gray-600 mb-4">
+                          <Users className="h-4 w-4 mr-1 flex-shrink-0" />
+                          <span className="text-sm">Up to {venue.capacity} guests</span>
+                        </div>
+
+                        <div className="mt-auto space-y-3">
+                          <div className="text-center">
+                            <span className="text-xl font-bold text-venue-indigo">
+                              ₹{venue.price.toLocaleString()}
+                            </span>
+                            <span className="text-gray-500 text-sm ml-1">/day</span>
                           </div>
+                          <Button
+                            asChild
+                            className="w-full bg-venue-indigo hover:bg-venue-purple text-white"
+                            onClick={scrollToTop}
+                          >
+                            <Link to={`/venue/${venue.id}`}>
+                              Book Now
+                            </Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center space-x-2 mt-8">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="flex items-center"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </Button>
+
+                    <div className="flex space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNumber;
+                        if (totalPages <= 5) {
+                          pageNumber = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNumber = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNumber = totalPages - 4 + i;
+                        } else {
+                          pageNumber = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNumber}
+                            variant={currentPage === pageNumber ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNumber)}
+                            className={currentPage === pageNumber ? "bg-venue-indigo text-white" : ""}
+                          >
+                            {pageNumber}
+                          </Button>
                         );
                       })}
-                      {venue.facilities.length > 4 && (
-                        <span className="text-xs text-venue-text-secondary px-2 py-1">
-                          +{venue.facilities.length - 4} more
-                        </span>
-                      )}
                     </div>
 
-                                        <Link
-                      to={`/venue/${venue.id}`}
-                      className="btn-primary w-full py-2 rounded-lg font-medium hover:scale-105 flex items-center justify-center"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center"
                     >
-                      View Details
-                    </Link>
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Load More Button */}
-            <div className="text-center mt-8">
-                            <button className="btn-primary px-8 py-3 rounded-lg font-semibold hover-lift hover:scale-105">
-                Load More Venues
-              </button>
-            </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default Venues;
+}

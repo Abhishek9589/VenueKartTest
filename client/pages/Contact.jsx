@@ -1,299 +1,262 @@
-import { useState } from "react";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Mail,
   Phone,
   MapPin,
   Clock,
   Send,
-  MessageCircle,
-  Users,
-  Calendar,
-} from "lucide-react";
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
+const contactInfo = [
+  {
+    title: "Email Us",
+    description: "Send us an email anytime",
+    value: "info@venuekart.in",
+    icon: Mail
+  },
+  {
+    title: "Call Us",
+    description: "Mon-Fri from 8am to 5pm",
+    value: "8806621666",
+    icon: Phone
+  },
+  {
+    title: "Visit Us",
+    description: "Come say hello at our office",
+    value: "Pune, Maharashtra, India",
+    icon: MapPin
+  },
+  {
+    title: "Working Hours",
+    description: "Our team is available",
+    value: "Mon-Fri: 9AM-7PM",
+    icon: Clock
+  }
+];
 
-  const contactInfo = [
-    {
-      icon: Mail,
-      title: "Email Us",
-      details: "info@venuekart.com",
-      subtitle: "We'll respond within 24 hours",
-    },
-    {
-      icon: Phone,
-      title: "Call Us",
-      details: "+91 98765 43210",
-      subtitle: "Mon-Sat, 9:00 AM - 8:00 PM",
-    },
-    {
-      icon: MapPin,
-      title: "Visit Us",
-      details: "Mumbai, India",
-      subtitle: "Schedule an appointment",
-    },
-    {
-      icon: Clock,
-      title: "Business Hours",
-      details: "Mon-Sat: 9:00 AM - 8:00 PM",
-      subtitle: "Sunday: 10:00 AM - 6:00 PM",
-    },
-  ];
+export default function Contact() {
+  const [result, setResult] = React.useState("");
 
-  const supportTypes = [
-    {
-      icon: MessageCircle,
-      title: "General Inquiry",
-      description: "Questions about our platform and services",
-    },
-    {
-      icon: Calendar,
-      title: "Booking Support",
-      description: "Help with existing bookings or new reservations",
-    },
-    {
-      icon: Users,
-      title: "Venue Partnership",
-      description: "Information about listing your venue with us",
-    },
-  ];
+  const onSubmit = (event) => {
+    event.preventDefault();
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+    const formData = new FormData(event.target);
+    const name = formData.get("name");
+    const email = formData.get("email");
+    const phone = formData.get("phone");
+    const subject = formData.get("subject");
+    const message = formData.get("message");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Form submission logic would go here
-    alert("Thank you for your message! We'll get back to you soon.");
-    setFormData({ name: "", email: "", subject: "", message: "" });
+    // Construct the email body
+    const emailBody = `
+Hi,
+
+I am reaching out through the VenueKart contact form.
+
+Name: ${name}
+Email: ${email}
+Phone: ${phone || 'Not provided'}
+
+Subject: ${subject}
+
+Message:
+${message}
+
+Best regards,
+${name}
+    `.trim();
+
+    // Create mailto link
+    const mailtoLink = `mailto:info@venuekart.in?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+
+    // Open email client
+    window.location.href = mailtoLink;
+
+    // Show success message
+    setResult("Opening your email client with the message pre-filled. Just click send!");
+
+    // Reset form after a brief delay
+    setTimeout(() => {
+      event.target.reset();
+      setResult("");
+    }, 3000);
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-            <section className="bg-gradient-to-br from-venue-primary-accent to-venue-secondary-accent py-20 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">Get in Touch</h1>
-          <p className="text-xl md:text-2xl max-w-3xl mx-auto opacity-90">
-            Have questions? We're here to help you find the perfect venue for
-            your event.
-          </p>
+    <div className="min-h-screen bg-white">
+      {/* Hero Section - Text Over Image */}
+      <section className="relative h-[70vh] overflow-hidden">
+        {/* Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: "url('https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=1200&h=800&fit=crop')"
+          }}
+        >
+          <div className="absolute inset-0 bg-black/50"></div>
         </div>
-      </section>
 
-      {/* Contact Info Cards */}
-      <section className="py-16 bg-venue-primary-bg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {contactInfo.map((info, index) => (
-              <div
-                key={index}
-                className="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-200"
-              >
-                                <div className="w-16 h-16 bg-venue-secondary-bg rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <info.icon className="w-8 h-8 text-venue-primary-accent" />
-                </div>
-                                <h3 className="text-lg font-semibold text-venue-text-dark mb-2">
-                  {info.title}
-                </h3>
-                                <p className="text-venue-primary-accent font-medium mb-1">
-                  {info.details}
-                </p>
-                <p className="text-venue-text-secondary text-sm">{info.subtitle}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Contact Form */}
-            <div>
-                            <h2 className="text-3xl font-bold text-venue-text-dark mb-6">
-                Send Us a Message
-              </h2>
-              <p className="text-venue-text-secondary mb-8">
-                Fill out the form below and we'll get back to you as soon as
-                possible.
-              </p>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="name"
-                                            className="block text-sm font-medium text-venue-text-dark mb-2"
-                    >
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                                            className="w-full px-4 py-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="email"
-                                            className="block text-sm font-medium text-venue-text-dark mb-2"
-                    >
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                                            className="w-full px-4 py-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                      placeholder="your.email@example.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="subject"
-                                          className="block text-sm font-medium text-venue-text-dark mb-2"
-                  >
-                    Subject *
-                  </label>
-                  <input
-                    type="text"
-                    id="subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleInputChange}
-                    required
-                                          className="w-full px-4 py-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent"
-                    placeholder="What is this regarding?"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="message"
-                                          className="block text-sm font-medium text-venue-text-dark mb-2"
-                  >
-                    Message *
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    required
-                    rows={6}
-                    className="w-full px-4 py-3 border border-venue-border rounded-lg focus:outline-none focus:ring-2 focus:ring-venue-primary-accent resize-vertical"
-                    placeholder="Tell us more about how we can help..."
-                  ></textarea>
-                </div>
-
-                <button
-                  type="submit"
-                                    className="btn-primary w-full py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2"
-                >
-                  <Send size={20} />
-                  Send Message
-                </button>
-              </form>
-            </div>
-
-            {/* Support Types */}
-            <div>
-                            <h2 className="text-3xl font-bold text-venue-text-dark mb-6">
-                How Can We Help?
-              </h2>
-              <p className="text-venue-text-secondary mb-8">
-                Choose the type of support you need and we'll connect you with
-                the right team member.
-              </p>
-
-              <div className="space-y-6">
-                {supportTypes.map((type, index) => (
-                  <div
-                    key={index}
-                                        className="bg-white p-6 rounded-lg shadow-md border-l-4 border-venue-secondary-accent hover:shadow-lg transition-shadow duration-200"
-                  >
-                    <div className="flex items-start gap-4">
-                                            <div className="w-12 h-12 bg-venue-secondary-bg rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <type.icon className="w-6 h-6 text-venue-primary-accent" />
-                      </div>
-                      <div>
-                                                <h3 className="text-lg font-semibold text-venue-text-dark mb-2">
-                          {type.title}
-                        </h3>
-                        <p className="text-venue-text-secondary">{type.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* FAQ Link */}
-                            <div className="mt-8 p-6 bg-venue-secondary-bg rounded-lg">
-                                <h3 className="text-lg font-semibold text-venue-text-dark mb-2">
-                  Frequently Asked Questions
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Check out our FAQ section for quick answers to common
-                  questions.
-                </p>
-                                <button className="text-venue-primary-accent hover:text-venue-primary-accent-hover font-medium">
-                  View FAQ →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-16 bg-venue-primary-bg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-venue-text-primary mb-4">
-              Find Us Here
-            </h2>
-            <p className="text-venue-text-secondary">
-              Located in the heart of Mumbai, we're easily accessible from
-              anywhere in the city.
+        {/* Content Over Image */}
+        <div className="relative h-full flex flex-col justify-center px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 font-poppins">
+              Get in Touch
+            </h1>
+            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Have questions about venues or need help with your booking? We're here to help you every step of the way.
             </p>
           </div>
-
-          {/* Placeholder for map */}
-          <div className="bg-venue-muted-bg h-96 rounded-lg flex items-center justify-center border border-venue-border">
-            <div className="text-center">
-              <MapPin size={48} className="text-venue-text-secondary mx-auto mb-4" />
-              <p className="text-venue-text-primary text-lg">Interactive Map</p>
-              <p className="text-venue-text-secondary">
-                Mumbai, India - Exact location available on contact
-              </p>
-            </div>
-          </div>
         </div>
       </section>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Contact Information */}
+          <div className="lg:col-span-1">
+            <h2 className="text-2xl font-bold text-venue-dark mb-6">
+              Contact Information
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Reach out to us through any of these channels. We're always ready to assist you.
+            </p>
+
+            <div className="space-y-6">
+              {contactInfo.map((info, index) => {
+                const Icon = info.icon;
+                return (
+                  <div key={index} className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-6 w-6 text-venue-indigo" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-venue-dark mb-1">{info.title}</h3>
+                      <p className="text-gray-600 text-sm mb-1">{info.description}</p>
+                      <p className="text-venue-indigo font-medium">{info.value}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Enhanced Contact Form */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-3xl text-venue-dark font-bold">Send us a Message</CardTitle>
+                <p className="text-gray-600 text-lg">
+                  Fill out the form below and we'll get back to you as soon as possible.
+                </p>
+              </CardHeader>
+              <CardContent className="px-8 pb-8">
+                <form onSubmit={onSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
+                        Full Name *
+                      </Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required
+                        placeholder="Enter your full name"
+                        className="h-12 border-2 border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 transition-all duration-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                        Email Address *
+                      </Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="Enter your email"
+                        className="h-12 border-2 border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">
+                        Phone Number
+                      </Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        className="h-12 border-2 border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 transition-all duration-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="subject" className="text-sm font-semibold text-gray-700">
+                        Subject *
+                      </Label>
+                      <Input
+                        id="subject"
+                        name="subject"
+                        type="text"
+                        required
+                        placeholder="What is this about?"
+                        className="h-12 border-2 border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="message" className="text-sm font-semibold text-gray-700">
+                      Message *
+                    </Label>
+                    <Textarea
+                      id="message"
+                      name="message"
+                      required
+                      placeholder="Tell us more about your inquiry..."
+                      rows={6}
+                      className="border-2 border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 transition-all duration-200 resize-none"
+                    />
+                  </div>
+
+                  {result && (
+                    <div className={`flex items-center space-x-3 p-4 rounded-lg border ${
+                      result.includes("Successfully")
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}>
+                      {result.includes("Successfully") ? (
+                        <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                      )}
+                      <span className="text-sm">{result}</span>
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-venue-indigo hover:bg-venue-purple text-white h-14 text-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                  >
+                    Send Message
+                    <Send className="ml-2 h-5 w-5" />
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
-};
-
-export default Contact;
+}

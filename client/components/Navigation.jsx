@@ -1,193 +1,204 @@
-import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
-import { Menu, X, User, LogOut } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { scrollToTop } from '@/lib/navigation';
+import { Button } from './ui/button';
+import { Menu, X, MapPin, LogOut, User, Building, Heart } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
-const Navigation = () => {
+export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
-  const { user, isAuthenticated, logout, isDemoMode } = useAuth();
-
-  const navItems = [
-    { name: "Home", path: "/" },
-    { name: "Venues", path: "/venues" },
-    { name: "About", path: "/about" },
-    { name: "Contact", path: "/contact" },
-  ];
+  const { user, logout, isVenueOwner, isLoggedIn } = useAuth();
 
   const isActive = (path) => location.pathname === path;
 
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: 'Home', path: '/' },
+    { name: 'Venues', path: '/venues' },
+    { name: 'About', path: '/about' },
+    { name: 'Contact', path: '/contact' },
+  ];
+
+  const userNavLinks = [
+    ...navLinks,
+    ...(isLoggedIn && !isVenueOwner() ? [{ name: 'Favorites', path: '/favorites' }] : []),
+  ];
+
+  const currentNavLinks = isLoggedIn ? userNavLinks : navLinks;
+
   return (
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-md border-b border-venue-border transition-all-smooth">
+    <motion.nav
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
+          <Link to="/" className="flex items-center space-x-2">
             <img
-              src="https://cdn.builder.io/api/v1/image/assets%2F317fd6eb2bf64600868e324db448b428%2F64862cb0fd1849b4871cf34916b603a2?format=webp&width=800"
+              src="https://cdn.builder.io/api/v1/image/assets%2F181d3ec55b014ac2aead9c04dc47e7f1%2F58dccb4263c94bf8bdc07b4891c6b92d?format=webp&width=800"
               alt="VenueKart Logo"
-              className="w-8 h-8 rounded-lg transition-transform-smooth group-hover:scale-110 group-hover:rotate-6"
+              className="w-10 h-10 object-contain"
             />
-            <span className="text-2xl font-bold text-venue-text-primary transition-colors-smooth group-hover:text-venue-primary-accent">
-              VenueKart
-            </span>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold text-venue-dark font-inter">VenueKart</span>
+              <span className="text-xs text-venue-indigo font-medium -mt-1">Event Venue Discovery & Booking</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
+            {currentNavLinks.map((link) => (
               <Link
-                key={item.path}
-                to={item.path}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-all-smooth hover-lift ${
-                  isActive(item.path)
-                    ? "text-venue-primary-accent bg-venue-secondary-bg shadow-md"
-                    : "text-venue-text-primary hover:text-venue-secondary-accent hover:bg-venue-secondary-bg/50"
+                key={link.name}
+                to={link.path}
+                onClick={scrollToTop}
+                className={`font-medium transition-colors duration-200 flex items-center gap-1 ${
+                  isActive(link.path)
+                    ? 'text-venue-indigo border-b-2 border-venue-indigo pb-1'
+                    : 'text-gray-700 hover:text-venue-indigo'
                 }`}
               >
-                {item.name}
+                {link.name === 'Favorites' && <Heart className="h-4 w-4" />}
+                {link.name}
               </Link>
             ))}
           </div>
 
-          {/* User Authentication */}
+          {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated() ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-venue-text-primary">
-                  Hi, {user?.name || "User"}
-                </span>
-                <div className="relative">
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-2 text-venue-text-primary hover:text-venue-secondary-accent px-3 py-2 rounded-md text-sm font-medium transition-all-smooth hover-lift"
-                  >
-                    <User size={18} />
-                    <span>Account</span>
-                  </button>
-                  {showUserMenu && (
-                    <div className="absolute right-0 top-10 w-48 bg-white rounded-lg shadow-lg border border-venue-border z-50">
-                      {user?.userType === "venue_owner" && (
-                        <Link
-                          to="/admin/dashboard"
-                          className="block px-4 py-2 text-venue-text-primary hover:bg-venue-muted-bg transition-colors-smooth"
-                          onClick={() => setShowUserMenu(false)}
-                        >
-                          Dashboard
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => {
-                          logout();
-                          setShowUserMenu(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-venue-text-primary hover:bg-venue-muted-bg transition-colors-smooth flex items-center gap-2"
-                      >
-                        <LogOut size={16} />
-                        Logout
-                      </button>
-                    </div>
+            {isLoggedIn ? (
+              <>
+                <div className="flex items-center space-x-2 text-venue-dark">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                  {isVenueOwner() && (
+                    <span className="text-xs bg-venue-lavender text-venue-indigo px-2 py-1 rounded-full">
+                      Venue Owner
+                    </span>
                   )}
                 </div>
-              </div>
+                {isVenueOwner() && (
+                  <Button asChild variant="outline" className="border-venue-indigo text-venue-indigo hover:bg-venue-indigo hover:text-white" onClick={scrollToTop}>
+                    <Link to="/admin/dashboard">
+                      <Building className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Link>
+                  </Button>
+                )}
+                <Button onClick={handleLogout} variant="ghost" className="text-venue-indigo hover:text-venue-purple">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </>
             ) : (
               <>
-                <Link
-                  to="/signin"
-                  className="text-venue-text-primary hover:text-venue-secondary-accent px-4 py-2 rounded-md text-sm font-medium transition-all-smooth hover-lift"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/signup"
-                  className="btn-primary px-4 py-2 rounded-md text-sm font-medium hover-lift hover:scale-105"
-                >
-                  Sign Up
-                </Link>
+                <Button asChild variant="ghost" className="text-venue-indigo hover:text-venue-purple hover:bg-venue-lavender/50 transition-colors" onClick={scrollToTop}>
+                  <Link to="/signin">Sign In</Link>
+                </Button>
+                <Button asChild className="bg-venue-indigo hover:bg-venue-purple text-white" onClick={scrollToTop}>
+                  <Link to="/signup">Sign Up</Link>
+                </Button>
               </>
             )}
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-venue-text-primary hover:text-venue-secondary-accent p-2 transition-all-smooth hover:scale-110"
+              className="text-venue-indigo"
             >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="md:hidden overflow-hidden"
+            >
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-t border-gray-200">
+              {currentNavLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    scrollToTop();
+                  }}
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 flex items-center gap-2 ${
+                    isActive(link.path)
+                      ? 'text-venue-indigo bg-venue-lavender'
+                      : 'text-gray-700 hover:text-venue-indigo hover:bg-gray-50'
+                  }`}
+                >
+                  {link.name === 'Favorites' && <Heart className="h-4 w-4" />}
+                  {link.name}
+                </Link>
+              ))}
+              <div className="pt-4 space-y-2">
+                {isLoggedIn ? (
+                  <>
+                    <div className="px-3 py-2 text-center text-venue-dark">
+                      <div className="flex items-center justify-center space-x-2">
+                        <User className="h-4 w-4" />
+                        <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                      </div>
+                      {isVenueOwner() && (
+                        <span className="text-xs bg-venue-lavender text-venue-indigo px-2 py-1 rounded-full mt-1 inline-block">
+                          Venue Owner
+                        </span>
+                      )}
+                    </div>
+                    {isVenueOwner() && (
+                      <Button asChild variant="outline" className="w-full border-venue-indigo text-venue-indigo hover:bg-venue-indigo hover:text-white">
+                        <Link to="/admin/dashboard" onClick={() => {
+                          setIsMenuOpen(false);
+                          scrollToTop();
+                        }}>
+                          <Building className="h-4 w-4 mr-2" />
+                          Dashboard
+                        </Link>
+                      </Button>
+                    )}
+                    <Button onClick={handleLogout} variant="ghost" className="w-full text-venue-indigo hover:text-venue-purple">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="ghost" className="w-full text-venue-indigo hover:text-venue-purple hover:bg-venue-lavender/50 transition-colors">
+                      <Link to="/signin" onClick={scrollToTop}>Sign In</Link>
+                    </Button>
+                    <Button asChild className="w-full bg-venue-indigo hover:bg-venue-purple text-white">
+                      <Link to="/signup" onClick={scrollToTop}>Sign Up</Link>
+                    </Button>
+                  </>
+                )}
+              </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Mobile Navigation Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-venue-border animate-slide-up">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {navItems.map((item, index) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-all-smooth hover-lift animate-fade-in nav-item-${index + 1} ${
-                  isActive(item.path)
-                    ? "text-venue-primary-accent bg-venue-secondary-bg"
-                    : "text-venue-text-primary hover:text-venue-secondary-accent hover:bg-venue-secondary-bg/50"
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-            <div className="pt-4 border-t border-venue-border space-y-2">
-              {isAuthenticated() ? (
-                <>
-                  <div className="px-3 py-2 text-venue-text-primary font-medium">
-                    Hi, {user?.name || "User"}
-                  </div>
-                  {user?.userType === "venue_owner" && (
-                    <Link
-                      to="/admin/dashboard"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="block px-3 py-2 text-venue-text-primary hover:text-venue-secondary-accent font-medium transition-all-smooth hover-lift"
-                    >
-                      Dashboard
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => {
-                      logout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-venue-text-primary hover:text-venue-secondary-accent font-medium transition-all-smooth hover-lift"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/signin"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="block px-3 py-2 text-venue-text-primary hover:text-venue-secondary-accent font-medium transition-all-smooth hover-lift"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    to="/signup"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="btn-primary block px-3 py-2 rounded-md font-medium text-center hover:scale-105"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      </nav>
+    </motion.nav>
   );
-};
-
-export default Navigation;
+}
