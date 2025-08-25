@@ -135,15 +135,29 @@ router.post('/register', async (req, res) => {
 
     // Create or update user (unverified)
     if (existing.length > 0) {
-      await pool.execute(
-        'UPDATE users SET name = ?, user_type = ?, password_hash = ?, mobile_number = ? WHERE email = ?',
-        [name, userType, passwordHash, mobileNumber, email]
-      );
+      if (mobileNumber) {
+        await pool.execute(
+          'UPDATE users SET name = ?, user_type = ?, password_hash = ?, mobile_number = ? WHERE email = ?',
+          [name, userType, passwordHash, mobileNumber, email]
+        );
+      } else {
+        await pool.execute(
+          'UPDATE users SET name = ?, user_type = ?, password_hash = ? WHERE email = ?',
+          [name, userType, passwordHash, email]
+        );
+      }
     } else {
-      await pool.execute(
-        'INSERT INTO users (email, name, user_type, password_hash, mobile_number, is_verified) VALUES (?, ?, ?, ?, ?, FALSE)',
-        [email, name, userType, passwordHash, mobileNumber]
-      );
+      if (mobileNumber) {
+        await pool.execute(
+          'INSERT INTO users (email, name, user_type, password_hash, mobile_number, is_verified) VALUES (?, ?, ?, ?, ?, FALSE)',
+          [email, name, userType, passwordHash, mobileNumber]
+        );
+      } else {
+        await pool.execute(
+          'INSERT INTO users (email, name, user_type, password_hash, is_verified) VALUES (?, ?, ?, ?, FALSE)',
+          [email, name, userType, passwordHash]
+        );
+      }
     }
 
     res.json({ message: 'Verification code sent to your email' });
