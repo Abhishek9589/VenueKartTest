@@ -175,38 +175,40 @@ export default function Index() {
         </div>
 
         {/* Search Bar at Bottom */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="absolute bottom-8 left-0 right-0">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
-              className="flex flex-col md:flex-row gap-3"
+              className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-white/20"
             >
-              <div className="relative flex-1">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search city or area"
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 focus:border-venue-indigo bg-white"
-                />
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
+                  <Input
+                    placeholder="Where do you want to celebrate?"
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    className="pl-12 h-14 text-base border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 bg-white rounded-xl font-medium placeholder:text-gray-400"
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
+                  <Input
+                    placeholder="What type of venue?"
+                    value={searchVenue}
+                    onChange={(e) => setSearchVenue(e.target.value)}
+                    className="pl-12 h-14 text-base border-gray-200 focus:border-venue-indigo focus:ring-2 focus:ring-venue-indigo/20 bg-white rounded-xl font-medium placeholder:text-gray-400"
+                  />
+                </div>
+                <Button
+                  onClick={handleSearch}
+                  className="h-14 px-8 bg-gradient-to-r from-venue-indigo to-venue-purple hover:from-venue-purple hover:to-venue-indigo text-white font-semibold text-base rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 whitespace-nowrap min-w-[140px]"
+                >
+                  Find Venues
+                </Button>
               </div>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Select type"
-                  value={searchVenue}
-                  onChange={(e) => setSearchVenue(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 focus:border-venue-indigo bg-white"
-                />
-              </div>
-              <Button
-                onClick={handleSearch}
-                className="h-10 px-8 bg-venue-indigo hover:bg-venue-purple text-white font-semibold whitespace-nowrap"
-              >
-                Search
-              </Button>
             </motion.div>
           </div>
         </div>
