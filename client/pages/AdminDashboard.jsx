@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AddVenueForm from '@/components/AddVenueForm';
 import EditVenueForm from '@/components/EditVenueForm';
 import notificationService from '../services/notificationService';
+import apiClient from '../lib/apiClient';
 import {
   Building,
   Home,
@@ -22,65 +23,16 @@ import {
   MapPin,
   DollarSign,
   Trash2,
-  Bell
+  Bell,
+  Loader2
 } from 'lucide-react';
 
-// API service functions
-const getAuthHeader = () => {
-  const token = localStorage.getItem('accessToken');
-  return { 'Authorization': `Bearer ${token}` };
-};
-
+// API service functions using the new apiClient
 const apiCall = async (url, options = {}) => {
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-        ...options.headers
-      }
-    });
-
-    // Read the response body once and store it
-    let responseData;
-    let errorMessage = `HTTP ${response.status}`;
-
-    try {
-      responseData = await response.json();
-    } catch (parseError) {
-      // Response is not valid JSON
-      responseData = null;
-      console.error('Failed to parse response as JSON:', parseError);
-    }
-
-    if (!response.ok) {
-      // Try to get detailed error from parsed response data
-      if (responseData && responseData.error) {
-        errorMessage = responseData.error;
-      } else if (responseData && responseData.message) {
-        errorMessage = responseData.message;
-      } else {
-        errorMessage = `${errorMessage}: ${response.statusText || 'Unknown error'}`;
-      }
-
-      console.error(`API call failed for ${url}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        url,
-        method: options.method || 'GET',
-        responseData
-      });
-
-      throw new Error(errorMessage);
-    }
-
-    return responseData;
+    return await apiClient.callJson(url, options);
   } catch (error) {
-    // Handle network errors or other fetch failures
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Network error: Unable to connect to server');
-    }
+    console.error(`API call failed for ${url}:`, error);
     throw error;
   }
 };
@@ -105,6 +57,7 @@ export default function AdminDashboard() {
   const [inquiryCount, setInquiryCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [inquiries, setInquiries] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isVenueOwner } = useAuth();
@@ -117,6 +70,50 @@ export default function AdminDashboard() {
       loadDashboardData();
     }
   }, [user, isVenueOwner, navigate]);
+
+  // Real-time updates with dynamic polling
+  useEffect(() => {
+    if (user && isVenueOwner()) {
+      let interval;
+
+      const setupPolling = () => {
+        // Poll more frequently when on overview or bookings section
+        const pollInterval = (activeSection === 'overview' || activeSection === 'bookings') ? 15000 : 45000;
+
+        interval = setInterval(async () => {
+          try {
+            const previousCount = inquiryCount;
+            await loadInquiryCount();
+
+            // If we're on the relevant sections, reload data
+            if (activeSection === 'overview' || activeSection === 'bookings') {
+              await loadBookings();
+              await loadDashboardStats();
+            }
+
+            // Only reload inquiries if notifications panel is open
+            if (showNotifications) {
+              await loadInquiries();
+            }
+
+            // Show notification if new inquiries arrived
+            const currentCount = inquiryCount;
+            if (currentCount > previousCount) {
+              showSuccess(`🔔 ${currentCount - previousCount} new inquiry${currentCount - previousCount > 1 ? 'ies' : ''} received!`);
+            }
+          } catch (error) {
+            console.error('Error auto-refreshing data:', error);
+          }
+        }, pollInterval);
+      };
+
+      setupPolling();
+
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+  }, [user, isVenueOwner, activeSection, showNotifications, inquiryCount]);
 
   const loadDashboardData = async () => {
     try {
@@ -284,20 +281,86 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
+      {/* Pending Inquiries - Priority Section */}
+      {bookings.filter(b => b.status === 'pending').length > 0 && (
+        <Card className="border-l-4 border-l-yellow-500 bg-yellow-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <Bell className="h-5 w-5" />
+              Pending Inquiries
+              <span className="bg-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded-full font-medium">
+                {bookings.filter(b => b.status === 'pending').length}
+              </span>
+            </CardTitle>
+            <CardDescription>Customer inquiries awaiting your response</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {bookings.filter(b => b.status === 'pending').slice(0, 3).map((inquiry) => (
+                <div key={inquiry.id} className="flex items-center justify-between p-4 bg-white border border-yellow-200 rounded-lg hover:border-yellow-300 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-8 h-8 bg-gradient-to-r from-venue-indigo to-venue-purple rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        {inquiry.customer_name.charAt(0).toUpperCase()}
+                      </div>
+                      <h4 className="font-semibold text-venue-dark">{inquiry.customer_name}</h4>
+                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-medium">NEW</span>
+                    </div>
+                    <p className="text-sm text-gray-600 ml-10">{inquiry.venue_name} • {new Date(inquiry.event_date).toLocaleDateString()} • {inquiry.guest_count} guests</p>
+                    <p className="text-sm text-gray-500 ml-10">{inquiry.customer_email}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-venue-dark mb-2">₹{inquiry.amount.toLocaleString()}</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => handleBookingAction(inquiry.id, 'confirmed')}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleBookingAction(inquiry.id, 'cancelled')}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {bookings.filter(b => b.status === 'pending').length > 3 && (
+                <div className="text-center pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveSection('bookings')}
+                    className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                  >
+                    View All {bookings.filter(b => b.status === 'pending').length} Inquiries
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recent Bookings */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Bookings</CardTitle>
-          <CardDescription>Latest venue bookings from customers</CardDescription>
+          <CardDescription>Latest confirmed and cancelled bookings</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {loading ? (
               <div className="text-center py-4 text-gray-500">Loading bookings...</div>
-            ) : bookings.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">No bookings yet</div>
+            ) : bookings.filter(b => b.status !== 'pending').length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No confirmed or cancelled bookings yet</div>
             ) : (
-              bookings.slice(0, 3).map((booking) => (
+              bookings.filter(b => b.status !== 'pending').slice(0, 3).map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-semibold text-venue-dark">{booking.customer_name}</h4>
@@ -407,15 +470,82 @@ export default function AdminDashboard() {
 
   const renderBookings = () => (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-venue-dark">Booking Overview</h1>
-        <p className="text-gray-600">Track and manage venue bookings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-venue-dark">Booking Overview</h1>
+          <p className="text-gray-600">Track and manage venue bookings</p>
+        </div>
+        <Button
+          onClick={async () => {
+            setLoading(true);
+            try {
+              await Promise.all([
+                loadBookings(),
+                loadInquiryCount(),
+                loadDashboardStats()
+              ]);
+              showSuccess('📊 Data refreshed successfully!');
+            } catch (error) {
+              showError('Failed to refresh data');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          disabled={loading}
+          variant="outline"
+          className="border-venue-indigo text-venue-indigo hover:bg-venue-indigo hover:text-white"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            'Refresh Data'
+          )}
+        </Button>
+      </div>
+
+      {/* Booking Status Filter */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Button
+          variant={!statusFilter || statusFilter === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('all')}
+          className="bg-venue-indigo hover:bg-venue-purple text-white"
+        >
+          All Bookings ({bookings.length})
+        </Button>
+        <Button
+          variant={statusFilter === 'pending' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('pending')}
+          className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+        >
+          Pending ({bookings.filter(b => b.status === 'pending').length})
+        </Button>
+        <Button
+          variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('confirmed')}
+          className="border-green-300 text-green-700 hover:bg-green-50"
+        >
+          Confirmed ({bookings.filter(b => b.status === 'confirmed').length})
+        </Button>
+        <Button
+          variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStatusFilter('cancelled')}
+          className="border-red-300 text-red-700 hover:bg-red-50"
+        >
+          Declined ({bookings.filter(b => b.status === 'cancelled').length})
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Bookings</CardTitle>
-          <CardDescription>Complete list of venue bookings with customer details</CardDescription>
+          <CardTitle>Booking History & Management</CardTitle>
+          <CardDescription>Complete timeline of all venue bookings with customer details</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -441,7 +571,9 @@ export default function AdminDashboard() {
                     <td colSpan="7" className="p-8 text-center text-gray-500">No bookings found</td>
                   </tr>
                 ) : (
-                  bookings.map((booking) => (
+                  bookings
+                    .filter(booking => !statusFilter || statusFilter === 'all' || booking.status === statusFilter)
+                    .map((booking) => (
                     <tr key={booking.id} className="border-b">
                       <td className="p-4">
                         <div>
@@ -454,12 +586,19 @@ export default function AdminDashboard() {
                       <td className="p-4">{booking.guest_count}</td>
                       <td className="p-4">₹{booking.amount.toLocaleString()}</td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${
+                            booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                          {booking.status !== 'pending' && (
+                            <span className="text-xs text-gray-500">
+                              Updated {new Date(booking.updated_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4">
                         <div className="flex gap-2">
@@ -802,19 +941,42 @@ export default function AdminDashboard() {
 
   const handleBookingAction = async (bookingId, newStatus) => {
     const actionText = newStatus === 'confirmed' ? 'accept' : 'reject';
+    const booking = bookings.find(b => b.id === bookingId);
 
-    if (!window.confirm(`Are you sure you want to ${actionText} this booking?`)) {
+    if (!booking) {
+      showError('Booking not found');
       return;
     }
 
+    if (!window.confirm(`Are you sure you want to ${actionText} the booking for ${booking.customer_name} at ${booking.venue_name}?`)) {
+      return;
+    }
+
+    // Optimistic update for immediate UI feedback
+    const originalBookings = [...bookings];
+    setBookings(prevBookings =>
+      prevBookings.map(b =>
+        b.id === bookingId ? { ...b, status: newStatus } : b
+      )
+    );
+
+    // Update inquiry count immediately
+    setInquiryCount(prev => Math.max(0, prev - 1));
+
     try {
-      setLoading(true);
       await apiCall(`/api/bookings/${bookingId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status: newStatus })
       });
 
-      // Reload bookings, stats, and inquiry count after status change
+      // Show detailed success message
+      showSuccess(
+        newStatus === 'confirmed'
+          ? `✅ Booking accepted! ${booking.customer_name} has been notified via email.`
+          : `❌ Booking declined. ${booking.customer_name} has been notified via email.`
+      );
+
+      // Reload data to ensure consistency with server
       await Promise.all([
         loadBookings(),
         loadDashboardStats(),
@@ -824,12 +986,14 @@ export default function AdminDashboard() {
       // Trigger notification updates for affected customers
       notificationService.triggerUpdate();
 
-      showSuccess(`Booking ${actionText}ed successfully!`);
     } catch (error) {
       console.error(`Error ${actionText}ing booking:`, error);
+
+      // Revert optimistic update on error
+      setBookings(originalBookings);
+      setInquiryCount(prev => prev + 1);
+
       showError(`Failed to ${actionText} booking. Please try again.`);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -957,9 +1121,9 @@ export default function AdminDashboard() {
                 )}
               </Button>
 
-              {/* Enhanced Notifications Dropdown */}
+              {/* Enhanced Notifications Dropdown - Sticky & Responsive */}
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-3 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 transform transition-all duration-300 ease-out scale-100 opacity-100">
+                <div className="fixed right-4 top-20 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 transform transition-all duration-300 ease-out scale-100 opacity-100 max-h-[calc(100vh-6rem)] overflow-hidden">
                   {/* Header with gradient */}
                   <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-venue-indigo to-venue-purple text-white rounded-t-xl">
                     <div className="flex items-center justify-between">
@@ -976,8 +1140,8 @@ export default function AdminDashboard() {
                     </p>
                   </div>
 
-                  {/* Scrollable content */}
-                  <div className="max-h-80 overflow-y-auto">
+                  {/* Scrollable content - Mobile responsive */}
+                  <div className="max-h-60 sm:max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                     {inquiries.length === 0 ? (
                       <div className="p-8 text-center text-gray-500">
                         <Bell className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -1026,13 +1190,13 @@ export default function AdminDashboard() {
                     )}
                   </div>
 
-                  {/* Footer with action buttons */}
+                  {/* Footer with action buttons - Mobile responsive */}
                   {inquiries.length > 0 && (
                     <div className="p-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           size="sm"
-                          className="flex-1 bg-venue-indigo hover:bg-venue-purple text-white transition-all duration-200"
+                          className="flex-1 bg-venue-indigo hover:bg-venue-purple text-white transition-all duration-200 text-xs sm:text-sm"
                           onClick={() => {
                             setActiveSection('bookings');
                             setShowNotifications(false);
@@ -1043,7 +1207,7 @@ export default function AdminDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="px-4 hover:bg-venue-lavender hover:border-venue-indigo hover:text-venue-indigo transition-all duration-200"
+                          className="sm:px-4 hover:bg-venue-lavender hover:border-venue-indigo hover:text-venue-indigo transition-all duration-200 text-xs sm:text-sm"
                           onClick={() => setShowNotifications(false)}
                         >
                           Close
@@ -1076,10 +1240,10 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Notification overlay */}
+      {/* Notification overlay with backdrop blur */}
       {showNotifications && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none"
           onClick={() => setShowNotifications(false)}
         />
       )}

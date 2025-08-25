@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
+import apiClient from '../lib/apiClient';
 
 const API_BASE = '/api/favorites';
 
 export const useFavorites = () => {
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('accessToken');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  };
 
   // Load user's favorite venue IDs
   const loadFavoriteIds = async () => {
@@ -21,23 +17,16 @@ export const useFavorites = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/ids`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader()
-        }
-      });
-
-      if (response.ok) {
-        const ids = await response.json();
-        setFavoriteIds(new Set(ids));
-      } else if (response.status === 401 || response.status === 403) {
+      const ids = await apiClient.getJson(`${API_BASE}/ids`);
+      setFavoriteIds(new Set(ids));
+    } catch (error) {
+      if (error.message.includes('401') || error.message.includes('403')) {
         // Token might be expired, clear the favorites
         setFavoriteIds(new Set());
         console.log('Authentication required for favorites');
+      } else {
+        console.error('Error loading favorite IDs:', error);
       }
-    } catch (error) {
-      console.error('Error loading favorite IDs:', error);
     } finally {
       setLoading(false);
     }
@@ -52,22 +41,15 @@ export const useFavorites = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/${venueId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader()
-        }
-      });
-
-      if (response.ok) {
-        setFavoriteIds(prev => new Set([...prev, parseInt(venueId)]));
-        return true;
-      } else if (response.status === 401 || response.status === 403) {
-        console.log('Please sign in to add favorites');
-      }
+      await apiClient.postJson(`${API_BASE}/${venueId}`, {});
+      setFavoriteIds(prev => new Set([...prev, parseInt(venueId)]));
+      return true;
     } catch (error) {
-      console.error('Error adding to favorites:', error);
+      if (error.message.includes('401') || error.message.includes('403')) {
+        console.log('Please sign in to add favorites');
+      } else {
+        console.error('Error adding to favorites:', error);
+      }
     }
     return false;
   };
@@ -81,26 +63,19 @@ export const useFavorites = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/${venueId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader()
-        }
+      await apiClient.deleteJson(`${API_BASE}/${venueId}`);
+      setFavoriteIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(parseInt(venueId));
+        return newSet;
       });
-
-      if (response.ok) {
-        setFavoriteIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(parseInt(venueId));
-          return newSet;
-        });
-        return true;
-      } else if (response.status === 401 || response.status === 403) {
-        console.log('Please sign in to manage favorites');
-      }
+      return true;
     } catch (error) {
-      console.error('Error removing from favorites:', error);
+      if (error.message.includes('401') || error.message.includes('403')) {
+        console.log('Please sign in to manage favorites');
+      } else {
+        console.error('Error removing from favorites:', error);
+      }
     }
     return false;
   };

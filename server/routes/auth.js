@@ -1,183 +1,215 @@
 import { Router } from 'express';
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import bcrypt from 'bcryptjs';
 import pool from '../config/database.js';
-import { sendOTPEmail } from '../services/emailService.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { authenticateToken } from '../middleware/auth.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { sendOTPEmail } from '../services/emailService.js';
 
 const router = Router();
 
-// Configure Google Strategy
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "/api/auth/google/callback"
-}, async (accessToken, refreshToken, profile, done) => {
+// Google OAuth routes
+router.get('/google', (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  const scope = 'email profile';
+  
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${clientId}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `scope=${encodeURIComponent(scope)}&` +
+    `response_type=code&` +
+    `access_type=offline&` +
+    `prompt=consent`;
+  
+  res.redirect(authUrl);
+});
+
+router.get('/google/callback', async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      'SELECT * FROM users WHERE google_id = ? OR email = ?',
-      [profile.id, profile.emails[0].value]
+    const { code, error } = req.query;
+    
+    if (error || !code) {
+      return res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
+    }
+
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+      }),
+    });
+
+    const tokens = await tokenResponse.json();
+
+    if (!tokenResponse.ok) {
+      console.error('Token exchange failed:', tokens);
+      return res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
+    }
+
+    // Get user info from Google
+    const userResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
+    const googleUser = await userResponse.json();
+
+    if (!userResponse.ok) {
+      console.error('Failed to get user info:', googleUser);
+      return res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
+    }
+
+    // Check if user exists
+    let [userRows] = await pool.execute(
+      'SELECT * FROM users WHERE email = ?',
+      [googleUser.email]
     );
 
-    let user = rows[0];
-
-    if (user) {
-      // Update google_id if user exists with email but no google_id
-      if (!user.google_id) {
-        await pool.execute(
-          'UPDATE users SET google_id = ?, profile_picture = ?, is_verified = TRUE WHERE id = ?',
-          [profile.id, profile.photos[0].value, user.id]
-        );
-        user.google_id = profile.id;
-        user.profile_picture = profile.photos[0].value;
-        user.is_verified = true;
-      }
-    } else {
+    let user;
+    if (userRows.length === 0) {
       // Create new user
       const [result] = await pool.execute(
-        'INSERT INTO users (google_id, email, name, profile_picture, is_verified) VALUES (?, ?, ?, ?, TRUE)',
-        [profile.id, profile.emails[0].value, profile.displayName, profile.photos[0].value]
+        'INSERT INTO users (google_id, email, name, profile_picture, user_type, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
+        [googleUser.id, googleUser.email, googleUser.name, googleUser.picture, 'customer', true]
       );
       
       user = {
         id: result.insertId,
-        google_id: profile.id,
-        email: profile.emails[0].value,
-        name: profile.displayName,
-        profile_picture: profile.photos[0].value,
+        google_id: googleUser.id,
+        email: googleUser.email,
+        name: googleUser.name,
+        profile_picture: googleUser.picture,
         user_type: 'customer',
         is_verified: true
       };
+    } else {
+      user = userRows[0];
+      // Update Google ID and profile picture if not set
+      if (!user.google_id) {
+        await pool.execute(
+          'UPDATE users SET google_id = ?, profile_picture = ?, is_verified = true WHERE id = ?',
+          [googleUser.id, googleUser.picture, user.id]
+        );
+        user.google_id = googleUser.id;
+        user.profile_picture = googleUser.picture;
+        user.is_verified = true;
+      }
     }
 
-    return done(null, user);
+    // Generate our own tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await pool.execute(
+      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+      [user.id, refreshToken, expiresAt]
+    );
+
+    // Redirect to frontend with tokens
+    const redirectUrl = `${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}`;
+    res.redirect(redirectUrl);
   } catch (error) {
-    return done(error, null);
+    console.error('OAuth callback error:', error);
+    res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
   }
-}));
+});
 
-// Google OAuth routes
-router.get('/google', 
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-router.get('/google/callback',
-  passport.authenticate('google', { session: false }),
-  async (req, res) => {
-    try {
-      const user = req.user;
-      const accessToken = generateAccessToken(user);
-      const refreshToken = generateRefreshToken(user);
-
-      // Store refresh token in database
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-      await pool.execute(
-        'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
-        [user.id, refreshToken, expiresAt]
-      );
-
-      // Redirect to frontend with tokens
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}?access_token=${accessToken}&refresh_token=${refreshToken}`);
-    } catch (error) {
-      console.error('OAuth callback error:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}?error=auth_failed`);
-    }
-  }
-);
-
-// Email-based registration with OTP
+// User Registration with OTP verification
 router.post('/register', async (req, res) => {
   try {
-    const { email, name, userType = 'customer', password, mobileNumber } = req.body;
+    const { email, name, userType = 'customer', password = null, mobileNumber = null } = req.body;
 
+    // Validation
     if (!email || !name) {
       return res.status(400).json({ error: 'Email and name are required' });
     }
 
-    if (!password || password.length < 6) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+
+    if (!['customer', 'venue-owner'].includes(userType)) {
+      return res.status(400).json({ error: 'Invalid user type' });
+    }
+
+    if (userType === 'venue-owner' && !password) {
+      return res.status(400).json({ error: 'Password is required for venue owners' });
+    }
+
+    if (password && password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
-    // Check database connection
-    try {
-      await pool.execute('SELECT 1');
-    } catch (dbError) {
-      console.error('Database connection failed:', dbError.message);
-      return res.status(503).json({
-        error: 'Database service unavailable. Please connect to a database service like Neon or set up MySQL.'
-      });
+    if (mobileNumber && !/^[0-9]{10}$/.test(mobileNumber.replace(/\s+/g, ''))) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
 
     // Check if user already exists
-    const [existing] = await pool.execute(
+    const [existingUsers] = await pool.execute(
       'SELECT * FROM users WHERE email = ?',
       [email]
     );
 
-    if (existing.length > 0 && existing[0].is_verified) {
-      return res.status(400).json({ error: 'User already exists with this email' });
+    if (existingUsers.length > 0) {
+      if (existingUsers[0].is_verified) {
+        return res.status(400).json({ error: 'Email is already registered' });
+      } else {
+        // Delete unverified user to allow re-registration
+        await pool.execute('DELETE FROM users WHERE email = ? AND is_verified = FALSE', [email]);
+      }
+    }
+
+    // Hash password if provided
+    let passwordHash = null;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 12);
     }
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    // Store user temporarily (unverified)
+    const [result] = await pool.execute(
+      'INSERT INTO users (email, name, password_hash, mobile_number, user_type, is_verified) VALUES (?, ?, ?, ?, ?, FALSE)',
+      [email, name, passwordHash, mobileNumber, userType]
+    );
+
     // Store OTP
+    await pool.execute('DELETE FROM otp_verifications WHERE email = ?', [email]);
     await pool.execute(
       'INSERT INTO otp_verifications (email, otp, expires_at) VALUES (?, ?, ?)',
       [email, otp, expiresAt]
     );
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 12);
-
     // Send OTP email
-    const emailSent = await sendOTPEmail(email, otp, name);
-
+    const emailSent = await sendOTPEmail(email, otp, name, 'Account Verification');
+    
     if (!emailSent) {
+      // If email fails, clean up
+      await pool.execute('DELETE FROM users WHERE id = ?', [result.insertId]);
+      await pool.execute('DELETE FROM otp_verifications WHERE email = ?', [email]);
       return res.status(500).json({ error: 'Failed to send verification email' });
     }
 
-    // Create or update user (unverified)
-    if (existing.length > 0) {
-      await pool.execute(
-        'UPDATE users SET name = ?, user_type = ?, password_hash = ?, mobile_number = ? WHERE email = ?',
-        [name, userType, passwordHash, mobileNumber, email]
-      );
-    } else {
-      await pool.execute(
-        'INSERT INTO users (email, name, user_type, password_hash, mobile_number, is_verified) VALUES (?, ?, ?, ?, ?, FALSE)',
-        [email, name, userType, passwordHash, mobileNumber]
-      );
-    }
-
-    res.json({ message: 'Verification code sent to your email' });
+    res.status(201).json({ 
+      message: 'Registration successful! Please check your email for the verification code.',
+      email: email
+    });
   } catch (error) {
     console.error('Registration error:', error);
-
-    // Provide specific error messages based on error type
-    if (error.code === 'ECONNREFUSED' || error.code === 'ER_ACCESS_DENIED_ERROR') {
-      return res.status(503).json({
-        error: 'Database connection failed. Please ensure database is running and credentials are correct.'
-      });
-    } else if (error.code === 'ER_NO_SUCH_TABLE') {
-      return res.status(503).json({
-        error: 'Database tables not found. Please initialize the database.'
-      });
-    } else {
-      return res.status(500).json({
-        error: `Registration failed: ${error.message}`
-      });
-    }
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 });
 
-// Verify OTP
+// Verify OTP and complete registration
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -196,10 +228,22 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
+    // Get user
+    const [userRows] = await pool.execute(
+      'SELECT * FROM users WHERE email = ? AND is_verified = FALSE',
+      [email]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found or already verified' });
+    }
+
+    const user = userRows[0];
+
     // Mark user as verified
     await pool.execute(
-      'UPDATE users SET is_verified = TRUE WHERE email = ?',
-      [email]
+      'UPDATE users SET is_verified = TRUE WHERE id = ?',
+      [user.id]
     );
 
     // Delete used OTP
@@ -208,13 +252,7 @@ router.post('/verify-otp', async (req, res) => {
       [email]
     );
 
-    // Get user data
-    const [userRows] = await pool.execute(
-      'SELECT * FROM users WHERE email = ?',
-      [email]
-    );
-
-    const user = userRows[0];
+    // Generate tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
@@ -226,7 +264,7 @@ router.post('/verify-otp', async (req, res) => {
     );
 
     res.json({
-      message: 'Email verified successfully',
+      message: 'Email verified successfully!',
       user: {
         id: user.id,
         email: user.email,
@@ -252,27 +290,23 @@ router.post('/resend-otp', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Check if user exists
+    // Check if user exists and is unverified
     const [userRows] = await pool.execute(
-      'SELECT * FROM users WHERE email = ?',
+      'SELECT * FROM users WHERE email = ? AND is_verified = FALSE',
       [email]
     );
 
     if (userRows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found or already verified' });
     }
 
     const user = userRows[0];
 
-    if (user.is_verified) {
-      return res.status(400).json({ error: 'Email already verified' });
-    }
-
     // Generate new OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Delete old OTPs and store new one
+    // Update OTP
     await pool.execute('DELETE FROM otp_verifications WHERE email = ?', [email]);
     await pool.execute(
       'INSERT INTO otp_verifications (email, otp, expires_at) VALUES (?, ?, ?)',
@@ -280,65 +314,21 @@ router.post('/resend-otp', async (req, res) => {
     );
 
     // Send OTP email
-    const emailSent = await sendOTPEmail(email, otp, user.name);
+    const emailSent = await sendOTPEmail(email, otp, user.name, 'Account Verification');
     
     if (!emailSent) {
       return res.status(500).json({ error: 'Failed to send verification email' });
     }
 
-    res.json({ message: 'New verification code sent to your email' });
+    res.json({ message: 'Verification code sent successfully!' });
   } catch (error) {
     console.error('Resend OTP error:', error);
-    res.status(500).json({ error: 'Failed to resend OTP' });
-  }
-});
-
-// Refresh token
-router.post('/refresh', async (req, res) => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token required' });
-    }
-
-    const decoded = verifyRefreshToken(refreshToken);
-    if (!decoded) {
-      return res.status(403).json({ error: 'Invalid refresh token' });
-    }
-
-    // Check if refresh token exists in database
-    const [tokenRows] = await pool.execute(
-      'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > NOW()',
-      [refreshToken]
-    );
-
-    if (tokenRows.length === 0) {
-      return res.status(403).json({ error: 'Refresh token not found or expired' });
-    }
-
-    // Get user data
-    const [userRows] = await pool.execute(
-      'SELECT * FROM users WHERE id = ?',
-      [decoded.id]
-    );
-
-    if (userRows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const user = userRows[0];
-    const newAccessToken = generateAccessToken(user);
-
-    res.json({ accessToken: newAccessToken });
-  } catch (error) {
-    console.error('Token refresh error:', error);
-    res.status(500).json({ error: 'Token refresh failed' });
+    res.status(500).json({ error: 'Failed to resend verification code' });
   }
 });
 
 // Logout
-router.post('/logout', authenticateToken, async (req, res) => {
+router.post('/logout', async (req, res) => {
   try {
     const { refreshToken } = req.body;
     
@@ -353,6 +343,56 @@ router.post('/logout', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Refresh access token
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token required' });
+    }
+
+    // Verify refresh token
+    const decoded = verifyRefreshToken(refreshToken);
+    if (!decoded) {
+      return res.status(403).json({ error: 'Invalid refresh token' });
+    }
+
+    // Check if refresh token exists in database and is not expired
+    const [tokenRows] = await pool.execute(
+      'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > NOW()',
+      [refreshToken]
+    );
+
+    if (tokenRows.length === 0) {
+      return res.status(403).json({ error: 'Refresh token expired or not found' });
+    }
+
+    // Get user data
+    const [userRows] = await pool.execute(
+      'SELECT * FROM users WHERE id = ?',
+      [decoded.id]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userRows[0];
+
+    // Generate new access token
+    const newAccessToken = generateAccessToken(user);
+
+    res.json({
+      accessToken: newAccessToken,
+      message: 'Token refreshed successfully'
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
 
@@ -692,70 +732,45 @@ router.put('/update-profile', authenticateToken, async (req, res) => {
         [email, otp, expiresAt, JSON.stringify({ userId, name, email, mobileNumber, password })]
       );
 
-      // Send verification email
-      const emailSent = await sendOTPEmail(email, otp, name, 'Email Update');
+      // Send OTP email
+      const emailSent = await sendOTPEmail(email, otp, name, 'Email Update Verification');
 
       if (!emailSent) {
         return res.status(500).json({ error: 'Failed to send verification email' });
       }
 
       return res.json({
-        message: 'Verification code sent to your new email address. Please verify to complete the update.',
         requiresVerification: true,
-        newEmail: email
+        newEmail: email,
+        message: 'Verification code sent to your new email address'
       });
     }
 
-    // If email is not changing, update normally
+    // If no email change, update directly
     let updateFields = ['name = ?'];
     let updateValues = [name];
 
-    // Add mobile number if provided
     if (mobileNumber) {
       updateFields.push('mobile_number = ?');
       updateValues.push(mobileNumber);
     }
 
-    // Add password if provided
     if (password) {
-      if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters long' });
-      }
       const passwordHash = await bcrypt.hash(password, 12);
       updateFields.push('password_hash = ?');
       updateValues.push(passwordHash);
     }
 
-    // Add user ID for WHERE clause
     updateValues.push(userId);
 
-    // Update user in database
     await pool.execute(
       `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`,
       updateValues
     );
 
-    // Get updated user data
-    const [updatedUserRows] = await pool.execute(
-      'SELECT id, email, name, user_type, profile_picture, mobile_number, is_verified FROM users WHERE id = ?',
-      [userId]
-    );
-
-    const updatedUser = updatedUserRows[0];
-    res.json({
-      message: 'Profile updated successfully',
-      user: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        name: updatedUser.name,
-        userType: updatedUser.user_type,
-        profilePicture: updatedUser.profile_picture,
-        mobileNumber: updatedUser.mobile_number,
-        isVerified: updatedUser.is_verified
-      }
-    });
+    res.json({ message: 'Profile updated successfully' });
   } catch (error) {
-    console.error('Profile update error:', error);
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });

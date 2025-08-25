@@ -1,3 +1,5 @@
+import apiClient from '../lib/apiClient.js';
+
 const API_BASE = '/api/auth';
 
 class AuthService {
@@ -8,27 +10,7 @@ class AuthService {
 
   async login(email, password) {
     try {
-      const response = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      // Read response body once
-      let data = null;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Failed to parse login response as JSON:', jsonError);
-        data = null;
-      }
-
-      if (!response.ok) {
-        const errorMessage = data && data.error ? data.error : 'Login failed';
-        throw new Error(errorMessage);
-      }
+      const data = await apiClient.postJson(`${API_BASE}/login`, { email, password });
 
       // Store tokens
       this.setTokens(data.accessToken, data.refreshToken);
@@ -137,26 +119,7 @@ class AuthService {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/me`, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
-      });
-
-      if (response.status === 401) {
-        // Token expired, try to refresh
-        const refreshed = await this.refreshAccessToken();
-        if (refreshed) {
-          return this.getCurrentUser();
-        }
-        return null;
-      }
-
-      if (!response.ok) {
-        return null;
-      }
-
-      return await response.json();
+      return await apiClient.getJson(`${API_BASE}/me`);
     } catch (error) {
       console.error('Get current user error:', error);
       return null;
@@ -169,28 +132,7 @@ class AuthService {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      let data = null;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Failed to parse refresh response as JSON:', jsonError);
-        this.clearTokens();
-        return false;
-      }
-
+      const data = await apiClient.postJson(`${API_BASE}/refresh`, { refreshToken: this.refreshToken });
       this.setTokens(data.accessToken, this.refreshToken);
       return true;
     } catch (error) {
@@ -223,7 +165,11 @@ class AuthService {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    }
+    // Update apiClient tokens as well
+    apiClient.setTokens(accessToken, refreshToken);
   }
 
   clearTokens() {
@@ -232,6 +178,8 @@ class AuthService {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user'); // Clear old user data
+    // Clear apiClient tokens as well
+    apiClient.clearTokens();
   }
 
   initiateGoogleAuth() {

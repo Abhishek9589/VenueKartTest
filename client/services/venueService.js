@@ -1,12 +1,9 @@
+import apiClient from '../lib/apiClient.js';
+
 const API_BASE = '/api/venues';
 
 class VenueService {
   async createVenue(venueData, images) {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
     try {
       // First upload images if any
       let uploadedImageUrls = [];
@@ -26,22 +23,7 @@ class VenueService {
         facilities: venueData.amenities
       };
 
-      const response = await fetch(API_BASE, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(apiData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create venue');
-      }
-
-      return data;
+      return await apiClient.postJson(API_BASE, apiData);
     } catch (error) {
       console.error('Error creating venue:', error);
       throw error;
@@ -136,23 +118,8 @@ class VenueService {
   }
 
   async getMyVenues() {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/owner/my-venues`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch venues');
-      }
-
-      return await response.json();
+      return await apiClient.getJson(`${API_BASE}/owner/my-venues`);
     } catch (error) {
       console.error('Error fetching my venues:', error);
       throw error;
@@ -160,11 +127,6 @@ class VenueService {
   }
 
   async updateVenue(id, venueData, images) {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
     try {
       // Upload new images if any
       let uploadedImageUrls = [];
@@ -184,22 +146,7 @@ class VenueService {
         facilities: venueData.amenities
       };
 
-      const response = await fetch(`${API_BASE}/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(apiData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update venue');
-      }
-
-      return data;
+      return await apiClient.putJson(`${API_BASE}/${id}`, apiData);
     } catch (error) {
       console.error('Error updating venue:', error);
       throw error;
@@ -207,24 +154,8 @@ class VenueService {
   }
 
   async deleteVenue(id) {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete venue');
-      }
-
+      await apiClient.deleteJson(`${API_BASE}/${id}`);
       return { message: 'Venue deleted successfully' };
     } catch (error) {
       console.error('Error deleting venue:', error);

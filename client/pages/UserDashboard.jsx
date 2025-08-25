@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
+import apiClient from '../lib/apiClient';
 import {
   User,
   Mail,
@@ -54,22 +55,38 @@ export default function UserDashboard() {
     }
   }, [isLoggedIn]);
 
-  const apiCall = async (url, options = {}) => {
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
+  // Auto-refresh user data every 60 seconds
+  useEffect(() => {
+    if (isLoggedIn) {
+      const interval = setInterval(async () => {
+        try {
+          const previousNotificationCount = notificationCount;
+          await loadUserData();
 
-    if (!response.ok) {
-      throw new Error(`API call failed: ${response.statusText}`);
+          // Show notification if new updates arrived
+          if (notificationCount > previousNotificationCount) {
+            toast({
+              title: "New Updates!",
+              description: `You have ${notificationCount - previousNotificationCount} new notification${notificationCount - previousNotificationCount > 1 ? 's' : ''}.`,
+              duration: 5000,
+            });
+          }
+        } catch (error) {
+          console.error('Error auto-refreshing user data:', error);
+        }
+      }, 60000); // 60 seconds
+
+      return () => clearInterval(interval);
     }
+  }, [isLoggedIn, notificationCount]);
 
-    return response.json();
+  const apiCall = async (url, options = {}) => {
+    try {
+      return await apiClient.callJson(url, options);
+    } catch (error) {
+      console.error(`API call failed for ${url}:`, error);
+      throw error;
+    }
   };
 
   const loadUserData = async () => {
@@ -81,9 +98,9 @@ export default function UserDashboard() {
         apiCall('/api/bookings/customer/notification-count')
       ]);
       
-      setBookings(bookingsData.bookings || []);
-      setNotifications(notificationsData.notifications || []);
-      setNotificationCount(notificationCountData.count || 0);
+      setBookings(bookingsData || []);
+      setNotifications(notificationsData || []);
+      setNotificationCount(notificationCountData.unreadCount || 0);
     } catch (error) {
       console.error('Error loading user data:', error);
       toast({
@@ -174,10 +191,10 @@ export default function UserDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-venue-purple" />
-                  Your Inquired Venues
+                  Your Booking History
                 </CardTitle>
                 <CardDescription>
-                  Track the status of all your venue booking requests
+                  Track all your venue inquiries and their current status
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -198,7 +215,11 @@ export default function UserDashboard() {
                     {bookings.map((booking) => (
                       <div
                         key={booking.id}
-                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                        className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors ${
+                          booking.status === 'confirmed' ? 'border-l-4 border-l-green-500 bg-green-50/30' :
+                          booking.status === 'cancelled' ? 'border-l-4 border-l-red-500 bg-red-50/30' :
+                          'border-l-4 border-l-yellow-500 bg-yellow-50/30'
+                        }`}
                       >
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                           <div className="flex-1">
@@ -209,12 +230,17 @@ export default function UserDashboard() {
                               <Badge variant={getStatusBadgeVariant(booking.status)}>
                                 {getStatusText(booking.status)}
                               </Badge>
+                              {booking.status !== 'pending' && (
+                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                  Updated {new Date(booking.updated_at).toLocaleDateString()}
+                                </span>
+                              )}
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-4 w-4" />
-                                {new Date(booking.event_date).toLocaleDateString()}
+                                Event: {new Date(booking.event_date).toLocaleDateString()}
                               </div>
                               <div className="flex items-center gap-1">
                                 <Users className="h-4 w-4" />
@@ -222,9 +248,26 @@ export default function UserDashboard() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
-                                {new Date(booking.booking_date).toLocaleDateString()}
+                                Inquired: {new Date(booking.created_at || booking.booking_date).toLocaleDateString()}
                               </div>
                             </div>
+
+                            {/* Status-specific messages */}
+                            {booking.status === 'confirmed' && (
+                              <div className="mt-2 text-sm text-green-700 bg-green-100 px-3 py-1 rounded-md">
+                                ✅ Your booking has been confirmed! The venue owner will contact you soon.
+                              </div>
+                            )}
+                            {booking.status === 'cancelled' && (
+                              <div className="mt-2 text-sm text-red-700 bg-red-100 px-3 py-1 rounded-md">
+                                ❌ This booking was declined. You may contact the venue directly or look for alternatives.
+                              </div>
+                            )}
+                            {booking.status === 'pending' && (
+                              <div className="mt-2 text-sm text-yellow-700 bg-yellow-100 px-3 py-1 rounded-md">
+                                ⏳ Your inquiry is pending review. The venue owner will respond within 24 hours.
+                              </div>
+                            )}
                           </div>
                           
                           <Dialog>

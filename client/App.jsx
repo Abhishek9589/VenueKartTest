@@ -10,6 +10,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
+import ErrorBoundary from "./components/ui/error-boundary";
+import TokenExpiredNotice from "./components/TokenExpiredNotice";
 import Index from "./pages/Index";
 import Venues from "./pages/Venues";
 import VenueDetail from "./pages/VenueDetail";
@@ -31,6 +33,7 @@ const Layout = ({ children }) => (
     <Navigation />
     {children}
     <Footer />
+    <TokenExpiredNotice />
   </>
 );
 
@@ -42,12 +45,13 @@ const AuthLayout = ({ children }) => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Layout><Index /></Layout>} />
             <Route path="/venues" element={<Layout><Venues /></Layout>} />
@@ -66,10 +70,11 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 createRoot(document.getElementById("root")).render(<App />);
