@@ -155,7 +155,19 @@ router.get('/google/callback', async (req, res) => {
     `);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
+    res.send(`
+      <script>
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'GOOGLE_AUTH_ERROR',
+            error: 'oauth_failed'
+          }, '${process.env.CLIENT_URL}');
+          window.close();
+        } else {
+          window.location.href = '${process.env.CLIENT_URL}/signin?error=oauth_failed';
+        }
+      </script>
+    `);
   }
 });
 
