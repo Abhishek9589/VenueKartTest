@@ -12,15 +12,17 @@ router.get('/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   const scope = 'email profile';
-  
+  const userType = req.query.userType || 'customer'; // Default to customer if not specified
+
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${clientId}&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `scope=${encodeURIComponent(scope)}&` +
     `response_type=code&` +
     `access_type=offline&` +
-    `prompt=consent`;
-  
+    `prompt=consent&` +
+    `state=${encodeURIComponent(JSON.stringify({ userType }))}`;
+
   res.redirect(authUrl);
 });
 
