@@ -65,8 +65,19 @@ export const AuthProvider = ({ children }) => {
     return await authService.resendOTP(email);
   };
 
-  const loginWithGoogle = () => {
-    authService.initiateGoogleAuth();
+  const loginWithGoogle = async (userType = 'customer') => {
+    try {
+      const result = await authService.initiateGoogleAuth(userType);
+      // Get current user data after successful auth
+      const userData = await authService.getCurrentUser();
+      if (userData) {
+        setUser(userData);
+      }
+      return result;
+    } catch (error) {
+      console.error('Google auth error:', error);
+      throw error;
+    }
   };
 
   const loginWithPassword = async (email, password) => {
