@@ -7,6 +7,19 @@ import { sendOTPEmail } from '../services/emailService.js';
 
 const router = Router();
 
+// Debug endpoint for Google OAuth config
+router.get('/google/debug', (req, res) => {
+  res.json({
+    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    hasRedirectUri: !!process.env.GOOGLE_REDIRECT_URI,
+    hasClientUrl: !!process.env.CLIENT_URL,
+    clientId: process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 20) + '...' : 'missing',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'missing',
+    clientUrl: process.env.CLIENT_URL || 'missing'
+  });
+});
+
 // Google OAuth routes
 router.get('/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
