@@ -100,19 +100,19 @@ router.get('/google/callback', async (req, res) => {
 
     let user;
     if (userRows.length === 0) {
-      // Create new user
+      // Create new user with the specified user type
       const [result] = await pool.execute(
         'INSERT INTO users (google_id, email, name, profile_picture, user_type, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
-        [googleUser.id, googleUser.email, googleUser.name, googleUser.picture, 'customer', true]
+        [googleUser.id, googleUser.email, googleUser.name, googleUser.picture, userType, true]
       );
-      
+
       user = {
         id: result.insertId,
         google_id: googleUser.id,
         email: googleUser.email,
         name: googleUser.name,
         profile_picture: googleUser.picture,
-        user_type: 'customer',
+        user_type: userType,
         is_verified: true
       };
     } else {
