@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Notification } from '@/components/ui/notification';
 import { FloatingMessage } from '@/components/ui/floating-message';
 import { useFavorites } from '../hooks/useFavorites';
+import { getUserFriendlyError } from '../lib/errorMessages';
 import {
   MapPin,
   Users,
@@ -44,7 +45,8 @@ const apiCall = async (url, options = {}) => {
   });
 
   if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
+    const userFriendlyMessage = getUserFriendlyError(`API call failed: ${response.statusText}`, 'general');
+    throw new Error(userFriendlyMessage);
   }
 
   return response.json();
@@ -89,7 +91,8 @@ export default function VenueDetail() {
         setVenue(venueData);
       } catch (err) {
         console.error('Error fetching venue details:', err);
-        setError(err.message);
+        const userFriendlyMessage = getUserFriendlyError(err.message || err, 'general');
+        setError(userFriendlyMessage);
       } finally {
         setLoading(false);
       }

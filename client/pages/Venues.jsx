@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
+import { getUserFriendlyError } from '../lib/errorMessages';
 import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
 import {
   MapPin,
@@ -33,7 +34,8 @@ const apiCall = async (url, options = {}) => {
   });
 
   if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
+    const userFriendlyMessage = getUserFriendlyError(`API call failed: ${response.statusText}`, 'general');
+    throw new Error(userFriendlyMessage);
   }
 
   return response.json();

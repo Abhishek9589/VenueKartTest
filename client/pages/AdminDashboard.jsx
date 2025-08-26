@@ -9,6 +9,7 @@ import AddVenueForm from '@/components/AddVenueForm';
 import EditVenueForm from '@/components/EditVenueForm';
 import notificationService from '../services/notificationService';
 import apiClient from '../lib/apiClient';
+import { getUserFriendlyError } from '../lib/errorMessages';
 import {
   Building,
   Home,
@@ -310,7 +311,7 @@ export default function AdminDashboard() {
                     <p className="text-sm text-gray-500 ml-10">{inquiry.customer_email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-venue-dark mb-2">₹{inquiry.amount.toLocaleString()}</p>
+                    <p className="font-semibold text-venue-dark mb-2">���{inquiry.amount.toLocaleString()}</p>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -735,13 +736,7 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error updating profile:', error);
 
-      // Try to get a more specific error message from the response
-      let errorMessage = 'Failed to update profile. Please try again.';
-      if (error.message && error.message !== 'API call failed: ') {
-        errorMessage = error.message;
-      }
-
-      showError(errorMessage);
+      showError(getUserFriendlyError(error, 'general'));
     } finally {
       setLoading(false);
     }
@@ -883,7 +878,7 @@ export default function AdminDashboard() {
       showSuccess('Venue added successfully!');
     } catch (error) {
       console.error('Error adding venue:', error);
-      showError(error.message || 'Failed to add venue. Please try again.');
+      showError(getUserFriendlyError(error, 'general'));
       // Don't close the form on error - let user fix issues and retry
       throw error; // Re-throw so AddVenueForm can handle it
     } finally {
@@ -906,7 +901,7 @@ export default function AdminDashboard() {
       setEditingVenue(null);
     } catch (error) {
       console.error('Error updating venue:', error);
-      alert('Failed to update venue. Please try again.');
+      showError(getUserFriendlyError(error, 'general'));
     } finally {
       setLoading(false);
     }
@@ -933,7 +928,7 @@ export default function AdminDashboard() {
       await loadDashboardStats();
     } catch (error) {
       console.error('Error deleting venue:', error);
-      showError('Failed to delete venue. Please try again.');
+      showError(getUserFriendlyError(error, 'general'));
     } finally {
       setLoading(false);
     }
@@ -944,7 +939,7 @@ export default function AdminDashboard() {
     const booking = bookings.find(b => b.id === bookingId);
 
     if (!booking) {
-      showError('Booking not found');
+      showError('Booking not found. Please refresh the page.');
       return;
     }
 

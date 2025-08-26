@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { X, Upload, Plus, Trash2 } from 'lucide-react';
 import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
+import { getUserFriendlyError } from '@/lib/errorMessages';
 
 export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -304,7 +305,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
       } catch (error) {
         // Form stays open with data intact if submission fails
         console.error('Form submission failed:', error);
-        setErrors(prev => ({ ...prev, general: error.message || 'Failed to submit form' }));
+        setErrors(prev => ({ ...prev, general: getUserFriendlyError(error, 'general') }));
       } finally {
         setIsSubmitting(false);
       }

@@ -1,4 +1,5 @@
 import apiClient from '../lib/apiClient.js';
+import { getUserFriendlyError } from '../lib/errorMessages.js';
 
 const API_BASE = '/api/venues';
 
@@ -26,14 +27,16 @@ class VenueService {
       return await apiClient.postJson(API_BASE, apiData);
     } catch (error) {
       console.error('Error creating venue:', error);
-      throw error;
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
     }
   }
 
   async uploadImages(images) {
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      throw new Error('Authentication required');
+      const userFriendlyMessage = getUserFriendlyError('Authentication required', 'general');
+      throw new Error(userFriendlyMessage);
     }
 
     const uploadedUrls = [];
@@ -55,13 +58,16 @@ class VenueService {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to upload image');
+          const originalError = data.error || 'Failed to upload image';
+          const userFriendlyMessage = getUserFriendlyError(originalError, 'general');
+          throw new Error(userFriendlyMessage);
         }
 
         uploadedUrls.push(data.secure_url);
       } catch (error) {
         console.error('Error uploading image:', error);
-        throw new Error(`Failed to upload image: ${image.name}`);
+        const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+        throw new Error(userFriendlyMessage);
       }
     }
 
@@ -92,13 +98,15 @@ class VenueService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch venues');
+        const userFriendlyMessage = getUserFriendlyError('Failed to fetch venues', 'general');
+        throw new Error(userFriendlyMessage);
       }
 
       return await response.json();
     } catch (error) {
       console.error('Error fetching venues:', error);
-      throw error;
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -107,13 +115,15 @@ class VenueService {
       const response = await fetch(`${API_BASE}/${id}`);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch venue');
+        const userFriendlyMessage = getUserFriendlyError('Failed to fetch venue', 'general');
+        throw new Error(userFriendlyMessage);
       }
 
       return await response.json();
     } catch (error) {
       console.error('Error fetching venue:', error);
-      throw error;
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -122,7 +132,8 @@ class VenueService {
       return await apiClient.getJson(`${API_BASE}/owner/my-venues`);
     } catch (error) {
       console.error('Error fetching my venues:', error);
-      throw error;
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -149,7 +160,8 @@ class VenueService {
       return await apiClient.putJson(`${API_BASE}/${id}`, apiData);
     } catch (error) {
       console.error('Error updating venue:', error);
-      throw error;
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -159,7 +171,8 @@ class VenueService {
       return { message: 'Venue deleted successfully' };
     } catch (error) {
       console.error('Error deleting venue:', error);
-      throw error;
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
     }
   }
 }
