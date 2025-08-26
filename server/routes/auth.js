@@ -139,14 +139,26 @@ router.get('/google/callback', async (req, res) => {
     // For popup window, close popup and pass tokens to parent
     res.send(`
       <script>
+        console.log('Google auth callback successful');
+
         // Store tokens in parent window
-        if (window.opener) {
-          window.opener.postMessage({
-            type: 'GOOGLE_AUTH_SUCCESS',
-            accessToken: '${accessToken}',
-            refreshToken: '${refreshToken}'
-          }, '${process.env.CLIENT_URL}');
-          window.close();
+        if (window.opener && !window.opener.closed) {
+          try {
+            window.opener.postMessage({
+              type: 'GOOGLE_AUTH_SUCCESS',
+              accessToken: '${accessToken}',
+              refreshToken: '${refreshToken}'
+            }, '${process.env.CLIENT_URL}');
+
+            // Give a moment for message to be processed
+            setTimeout(() => {
+              window.close();
+            }, 100);
+          } catch (error) {
+            console.error('Error posting message to parent:', error);
+            // Fallback: redirect normally
+            window.location.href = '${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}';
+          }
         } else {
           // Fallback: redirect normally if not in popup
           window.location.href = '${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}';
