@@ -253,7 +253,14 @@ export default function SignUp() {
                     await loginWithGoogle();
                     navigate('/');
                   } catch (error) {
-                    setError(error.message || 'Google authentication failed');
+                    console.error('Google auth error in SignUp:', error);
+                    if (error.message === 'Authentication cancelled') {
+                      setError('Google sign-up was cancelled. Please try again.');
+                    } else if (error.message === 'Popup blocked. Please allow popups and try again.') {
+                      setError('Please allow popups in your browser and try again.');
+                    } else {
+                      setError(error.message || 'Google authentication failed');
+                    }
                   } finally {
                     setLoading(false);
                   }

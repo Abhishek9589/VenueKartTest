@@ -83,7 +83,13 @@ export default function SignIn() {
       navigate('/');
     } catch (error) {
       console.error('Google sign in error:', error);
-      setError(error.message || 'Failed to sign in with Google. Please try again.');
+      if (error.message === 'Authentication cancelled') {
+        setError('Google sign-in was cancelled. Please try again.');
+      } else if (error.message === 'Popup blocked. Please allow popups and try again.') {
+        setError('Please allow popups in your browser and try again.');
+      } else {
+        setError(error.message || 'Failed to sign in with Google. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
