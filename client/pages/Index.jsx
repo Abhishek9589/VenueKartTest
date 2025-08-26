@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
+import { getUserFriendlyError } from '../lib/errorMessages';
 import {
   Search,
   MapPin,
@@ -34,7 +35,8 @@ const apiCall = async (url, options = {}) => {
   });
 
   if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
+    const userFriendlyMessage = getUserFriendlyError(`API call failed: ${response.statusText}`, 'general');
+    throw new Error(userFriendlyMessage);
   }
 
   return response.json();

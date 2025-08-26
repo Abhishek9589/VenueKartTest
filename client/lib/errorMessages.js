@@ -6,9 +6,23 @@ export const getUserFriendlyError = (error, context = 'general') => {
   const errorMessage = error?.message || error || 'Something went wrong';
   const lowerCaseError = errorMessage.toLowerCase();
 
+  // Authentication errors (401, 403, unauthorized, token-related)
+  if (lowerCaseError.includes('401') ||
+      lowerCaseError.includes('unauthorized') ||
+      lowerCaseError.includes('access token required') ||
+      lowerCaseError.includes('token refresh failed') ||
+      lowerCaseError.includes('refresh token required') ||
+      lowerCaseError.includes('no refresh token available') ||
+      lowerCaseError.includes('session expired') ||
+      lowerCaseError.includes('token expired') ||
+      lowerCaseError.includes('403') ||
+      lowerCaseError.includes('forbidden')) {
+    return 'Your session has expired. Please sign in again to continue.';
+  }
+
   // Database/Network errors
-  if (lowerCaseError.includes('network') || 
-      lowerCaseError.includes('fetch') || 
+  if (lowerCaseError.includes('network') ||
+      lowerCaseError.includes('fetch') ||
       lowerCaseError.includes('connection') ||
       lowerCaseError.includes('enotfound') ||
       lowerCaseError.includes('timeout')) {
@@ -16,7 +30,7 @@ export const getUserFriendlyError = (error, context = 'general') => {
   }
 
   // Server errors
-  if (lowerCaseError.includes('500') || 
+  if (lowerCaseError.includes('500') ||
       lowerCaseError.includes('internal server error') ||
       lowerCaseError.includes('server error')) {
     return 'Our servers are temporarily busy. Please try again in a few moments.';
@@ -42,20 +56,24 @@ export const getUserFriendlyError = (error, context = 'general') => {
   }
 
   if (context === 'signin') {
-    if (lowerCaseError.includes('invalid credentials') || 
+    if (lowerCaseError.includes('invalid email or password') ||
+        lowerCaseError.includes('invalid credentials') ||
         lowerCaseError.includes('wrong password') ||
         lowerCaseError.includes('incorrect password') ||
         lowerCaseError.includes('authentication failed')) {
       return 'Incorrect email or password. Please try again.';
     }
-    if (lowerCaseError.includes('account not found') || 
+    if (lowerCaseError.includes('this account uses social login')) {
+      return 'This account uses Google sign-in. Please sign in with Google instead.';
+    }
+    if (lowerCaseError.includes('account not found') ||
         lowerCaseError.includes('user not found')) {
       return 'No account found with this email. Please check your email or sign up.';
     }
     if (lowerCaseError.includes('account not verified')) {
       return 'Please verify your email address before signing in.';
     }
-    if (lowerCaseError.includes('account suspended') || 
+    if (lowerCaseError.includes('account suspended') ||
         lowerCaseError.includes('account blocked')) {
       return 'Your account has been temporarily suspended. Please contact support.';
     }

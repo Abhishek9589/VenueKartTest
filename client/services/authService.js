@@ -1,4 +1,5 @@
 import apiClient from '../lib/apiClient.js';
+import { getUserFriendlyError } from '../lib/errorMessages.js';
 
 const API_BASE = '/api/auth';
 
@@ -17,7 +18,9 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+      // Convert to user-friendly signin-specific error message
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'signin');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -48,7 +51,9 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('Registration error:', error);
-      throw error;
+      // Convert to user-friendly signup-specific error message
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'signup');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -79,7 +84,9 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('OTP verification error:', error);
-      throw error;
+      // Convert to user-friendly OTP-specific error message
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'otp');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -109,7 +116,9 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('Resend OTP error:', error);
-      throw error;
+      // Convert to user-friendly OTP-specific error message
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'otp');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -285,7 +294,9 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('Forgot password error:', error);
-      throw error;
+      // Convert to user-friendly password-reset specific error message
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'password-reset');
+      throw new Error(userFriendlyMessage);
     }
   }
 
@@ -315,7 +326,9 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('Reset password error:', error);
-      throw error;
+      // Convert to user-friendly password-reset specific error message
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'password-reset');
+      throw new Error(userFriendlyMessage);
     }
   }
 
