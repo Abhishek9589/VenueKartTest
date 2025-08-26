@@ -1,7 +1,16 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { sendVenueInquiryEmail, sendInquiryNotificationToVenueKart, sendBookingConfirmationEmail, sendBookingRejectionEmail } from '../services/emailService.js';
+import {
+  sendVenueInquiryEmail,
+  sendInquiryNotificationToVenueKart,
+  sendBookingConfirmationEmail,
+  sendBookingRejectionEmail,
+  sendInquiryAcceptedToAdmin,
+  sendInquiryAcceptedToCustomer,
+  sendInquiryRejectedToAdmin,
+  sendInquiryRejectedToCustomer
+} from '../services/emailService.js';
 
 const router = Router();
 
@@ -182,42 +191,96 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
       );
     }
 
-    // Send email notification to customer if status changed from pending
+    // Send email notifications for inquiry status changes (pending -> confirmed/cancelled)
     if (previousStatus === 'pending' && (status === 'confirmed' || status === 'cancelled')) {
-      const bookingData = {
-        customer: {
-          name: booking.customer_name,
-          email: booking.customer_email
-        },
+      // Get venue owner details for inquiry acceptance emails
+      const [ownerDetails] = await pool.execute(
+        'SELECT name, email, mobile_number FROM users WHERE id = (SELECT owner_id FROM venues WHERE id = ?)',
+        [booking.venue_id]
+      );
+
+      const owner = ownerDetails[0] || {};
+
+      // Prepare base inquiry data
+      const baseInquiryData = {
         venue: {
+          id: booking.venue_id,
           name: booking.venue_name,
-          location: booking.venue_location
+          location: booking.venue_location,
+          price: booking.amount // Using the booking amount as price reference
         },
         event: {
           date: booking.event_date,
           type: booking.event_type,
           guestCount: booking.guest_count,
-          amount: booking.amount,
           specialRequests: booking.special_requirements || 'None'
         },
-        bookingId: booking.id
+        owner: {
+          name: owner.name || 'Venue Owner',
+          email: owner.email || 'Not provided',
+          phone: owner.mobile_number || 'Not provided'
+        }
       };
 
-      // Send appropriate email notification
+      // Send appropriate email notifications based on status
       if (status === 'confirmed') {
+        // Venue owner ACCEPTED the inquiry
         try {
-          await sendBookingConfirmationEmail(booking.customer_email, bookingData);
-          console.log(`Confirmation email sent to ${booking.customer_email} for booking ${id}`);
+          // 1. Email to VenueKart Admin about acceptance (with FULL customer details)
+          const adminInquiryData = {
+            ...baseInquiryData,
+            customer: {
+              name: booking.customer_name,
+              email: booking.customer_email,
+              phone: booking.customer_phone
+            }
+          };
+          await sendInquiryAcceptedToAdmin(adminInquiryData);
+          console.log(`Inquiry acceptance notification sent to admin for booking ${id} (full customer details)`);
+
+          // 2. Email to Customer about acceptance (with venue owner contact details)
+          const customerInquiryData = {
+            ...baseInquiryData,
+            customer: {
+              name: booking.customer_name,
+              email: booking.customer_email,
+              phone: booking.customer_phone
+            }
+          };
+          await sendInquiryAcceptedToCustomer(booking.customer_email, customerInquiryData);
+          console.log(`Inquiry acceptance email sent to ${booking.customer_email} for booking ${id}`);
         } catch (emailError) {
-          console.error('Error sending confirmation email:', emailError);
+          console.error('Error sending inquiry acceptance emails:', emailError);
           // Don't fail the request if email fails
         }
       } else if (status === 'cancelled') {
+        // Venue owner REJECTED the inquiry
         try {
-          await sendBookingRejectionEmail(booking.customer_email, bookingData);
-          console.log(`Rejection email sent to ${booking.customer_email} for booking ${id}`);
+          // 1. Email to VenueKart Admin about rejection (with FULL customer details)
+          const adminInquiryData = {
+            ...baseInquiryData,
+            customer: {
+              name: booking.customer_name,
+              email: booking.customer_email,
+              phone: booking.customer_phone
+            }
+          };
+          await sendInquiryRejectedToAdmin(adminInquiryData);
+          console.log(`Inquiry rejection notification sent to admin for booking ${id} (full customer details)`);
+
+          // 2. Email to Customer about rejection (NO venue owner contact details - handled in template)
+          const customerInquiryData = {
+            ...baseInquiryData,
+            customer: {
+              name: booking.customer_name,
+              email: booking.customer_email,
+              phone: booking.customer_phone
+            }
+          };
+          await sendInquiryRejectedToCustomer(booking.customer_email, customerInquiryData);
+          console.log(`Inquiry rejection email sent to ${booking.customer_email} for booking ${id}`);
         } catch (emailError) {
-          console.error('Error sending rejection email:', emailError);
+          console.error('Error sending inquiry rejection emails:', emailError);
           // Don't fail the request if email fails
         }
       }
@@ -367,17 +430,12 @@ router.post('/inquiry', authenticateToken, async (req, res) => {
     }
 
     // Prepare inquiry data for emails
-    const inquiryData = {
+    const baseInquiryData = {
       venue: {
         id: venue_id,
         name: venue_name,
         location: venue.location || 'Location not specified',
         price: venue.price_per_day || venue.price || 'Price not specified'
-      },
-      customer: {
-        name: fullName,
-        email: email,
-        phone: phone
       },
       event: {
         type: eventType,
@@ -391,18 +449,37 @@ router.post('/inquiry', authenticateToken, async (req, res) => {
       }
     };
 
-    // Send emails
+    // Send emails according to requirements
     try {
-      // Send notification to venue owner
+      // 1. EMAIL TO VENUE OWNER (with LIMITED customer details - NO email/phone)
       if (venue_owner && venue_owner.email) {
-        await sendVenueInquiryEmail(venue_owner.email, inquiryData);
+        const venueOwnerInquiryData = {
+          ...baseInquiryData,
+          customer: {
+            name: fullName
+            // NO email and phone for venue owner
+          }
+        };
+        await sendVenueInquiryEmail(venue_owner.email, venueOwnerInquiryData);
+        console.log(`Venue owner inquiry email sent to ${venue_owner.email} (customer contact hidden)`);
+      } else {
+        console.warn('Venue owner email not provided - skipping venue owner notification');
       }
 
-      // Send notification to VenueKart team
-      await sendInquiryNotificationToVenueKart(inquiryData);
+      // 2. EMAIL TO VENUEKART ADMIN (with FULL customer details including email/phone)
+      const adminInquiryData = {
+        ...baseInquiryData,
+        customer: {
+          name: fullName,
+          email: email,
+          phone: phone
+        }
+      };
+      await sendInquiryNotificationToVenueKart(adminInquiryData);
+      console.log('VenueKart admin inquiry notification sent (full customer details included)');
 
     } catch (emailError) {
-      console.error('Error sending emails:', emailError);
+      console.error('Error sending inquiry emails:', emailError);
       // Don't fail the request if emails fail
     }
 
