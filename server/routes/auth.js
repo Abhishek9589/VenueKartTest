@@ -124,9 +124,23 @@ router.get('/google/callback', async (req, res) => {
       [user.id, refreshToken, expiresAt]
     );
 
-    // Redirect to frontend with tokens
-    const redirectUrl = `${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}`;
-    res.redirect(redirectUrl);
+    // For popup window, close popup and pass tokens to parent
+    res.send(`
+      <script>
+        // Store tokens in parent window
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'GOOGLE_AUTH_SUCCESS',
+            accessToken: '${accessToken}',
+            refreshToken: '${refreshToken}'
+          }, '${process.env.CLIENT_URL}');
+          window.close();
+        } else {
+          // Fallback: redirect normally if not in popup
+          window.location.href = '${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}';
+        }
+      </script>
+    `);
   } catch (error) {
     console.error('OAuth callback error:', error);
     res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
