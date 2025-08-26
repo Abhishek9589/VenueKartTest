@@ -12,7 +12,10 @@ router.get('/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   const scope = 'email profile';
-  const userType = req.query.userType || 'customer'; // Default to customer if not specified
+
+  // Validate and set userType
+  const requestedUserType = req.query.userType || 'customer';
+  const userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${clientId}&` +
@@ -35,7 +38,9 @@ router.get('/google/callback', async (req, res) => {
     if (state) {
       try {
         const stateData = JSON.parse(decodeURIComponent(state));
-        userType = stateData.userType || 'customer';
+        const requestedUserType = stateData.userType || 'customer';
+        // Validate userType
+        userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
       } catch (parseError) {
         console.log('Could not parse state parameter:', parseError);
       }
