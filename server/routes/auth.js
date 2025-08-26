@@ -28,7 +28,18 @@ router.get('/google', (req, res) => {
 
 router.get('/google/callback', async (req, res) => {
   try {
-    const { code, error } = req.query;
+    const { code, error, state } = req.query;
+
+    // Parse userType from state parameter
+    let userType = 'customer'; // default
+    if (state) {
+      try {
+        const stateData = JSON.parse(decodeURIComponent(state));
+        userType = stateData.userType || 'customer';
+      } catch (parseError) {
+        console.log('Could not parse state parameter:', parseError);
+      }
+    }
     
     if (error || !code) {
       return res.send(`
