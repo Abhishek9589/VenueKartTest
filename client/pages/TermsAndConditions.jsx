@@ -18,7 +18,7 @@ import {
 export default function TermsAndConditions() {
   const handleDownloadPDF = () => {
     // Use the PDF URL from the attachment
-    const pdfUrl = "https://cdn.builder.io/o/assets%2F3b6b1b8f741c4734989eae043b101f0d%2Fc82ecfe47a3f4d5b91f222940271539b?alt=media&token=e01455fa-14b0-45a9-a390-37fc119f7e28&apiKey=3b6b1b8f741c4734989eae043b101f0d";
+    const pdfUrl = "/terms-and-conditions.pdf";
     const link = document.createElement('a');
     link.href = pdfUrl;
     link.download = 'VenueKart-Terms-and-Conditions.pdf';

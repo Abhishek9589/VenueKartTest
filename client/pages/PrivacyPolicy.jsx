@@ -17,7 +17,7 @@ import {
 export default function PrivacyPolicy() {
   const handleDownloadPDF = () => {
     // Use the PDF URL from the attachment
-    const pdfUrl = "https://cdn.builder.io/o/assets%2F3b6b1b8f741c4734989eae043b101f0d%2F4db62611110747858d6fd3087f7724fd?alt=media&token=b09cd21b-63a7-4915-9ec6-54b3a5029237&apiKey=3b6b1b8f741c4734989eae043b101f0d";
+    const pdfUrl = "/privacy-policy.pdf";
     const link = document.createElement('a');
     link.href = pdfUrl;
     link.download = 'VenueKart-Privacy-Policy.pdf';
