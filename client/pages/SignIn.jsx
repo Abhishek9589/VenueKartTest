@@ -75,12 +75,17 @@ export default function SignIn() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     try {
-      loginWithGoogle();
+      setIsLoading(true);
+      setError('');
+      await loginWithGoogle();
+      navigate('/');
     } catch (error) {
       console.error('Google sign in error:', error);
-      setError('Failed to sign in with Google. Please try again.');
+      setError(error.message || 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
