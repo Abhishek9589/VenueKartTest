@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { User, Building, Mail, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getUserFriendlyError } from '../lib/errorMessages';
 
 export default function SignUp() {
   const [userType, setUserType] = useState('');
@@ -36,13 +37,19 @@ export default function SignUp() {
 
     try {
       if (!userType) {
-        throw new Error('Please select a user type');
+        setError('Please select whether you are a Customer or Venue Owner.');
+        setLoading(false);
+        return;
       }
       if (!formData.agreeToTerms) {
-        throw new Error('Please agree to the terms and conditions');
+        setError('Please agree to the terms and conditions to continue.');
+        setLoading(false);
+        return;
       }
       if (formData.password.length < 6) {
-        throw new Error('Password must be at least 6 characters long');
+        setError('Please choose a password with at least 6 characters.');
+        setLoading(false);
+        return;
       }
 
       await register(formData.email, formData.fullName, userType, formData.password);
@@ -55,7 +62,7 @@ export default function SignUp() {
         }
       });
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(getUserFriendlyError(err, 'signup'));
     } finally {
       setLoading(false);
     }
@@ -258,13 +265,7 @@ export default function SignUp() {
                     navigate('/');
                   } catch (error) {
                     console.error('Google auth error in SignUp:', error);
-                    if (error.message === 'Authentication cancelled') {
-                      setError('Google sign-up was cancelled. Please try again.');
-                    } else if (error.message === 'Popup blocked. Please allow popups and try again.') {
-                      setError('Please allow popups in your browser and try again.');
-                    } else {
-                      setError(error.message || 'Google authentication failed');
-                    }
+                    setError(getUserFriendlyError(error, 'signup'));
                   } finally {
                     setLoading(false);
                   }

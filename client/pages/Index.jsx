@@ -188,7 +188,7 @@ export default function Index() {
                         placeholder="Search city or area"
                         value={searchLocation}
                         onChange={(e) => setSearchLocation(e.target.value)}
-                        className="pl-12 h-14 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
+                        className="pl-12 h-12 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
                       />
                     </div>
                     <div className="relative flex-1">
@@ -197,13 +197,13 @@ export default function Index() {
                         placeholder="Select venue type"
                         value={searchVenue}
                         onChange={(e) => setSearchVenue(e.target.value)}
-                        className="pl-12 h-14 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
+                        className="pl-12 h-12 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
                       />
                     </div>
                   </div>
                   <Button
                     onClick={handleSearch}
-                    className="h-14 px-8 bg-venue-indigo hover:bg-venue-purple text-white font-semibold whitespace-nowrap rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[120px]"
+                    className="h-12 px-8 bg-venue-indigo hover:bg-venue-purple text-white font-semibold whitespace-nowrap rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[120px]"
                   >
                     <Search className="h-5 w-5 mr-2" />
                     Search
