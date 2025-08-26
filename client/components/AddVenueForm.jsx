@@ -371,11 +371,14 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Venue Type (Optional)
                 </label>
-                <Input
+                <AutocompleteInput
+                  options={VENUE_TYPES}
                   value={formData.venueType}
-                  onChange={(e) => handleInputChange('venueType', e.target.value)}
-                  placeholder="Type venue type manually (optional)..."
-                  className={`w-full h-10 border-gray-300 focus:border-indigo-500`}
+                  onChange={(value) => handleInputChange('venueType', value)}
+                  placeholder="Type to search..."
+                  className={`w-full h-10 ${errors.venueType ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500`}
+                  data-field="venueType"
+                  data-value={formData.venueType}
                 />
                 {errors.venueType && (
                   <p className="text-red-500 text-sm mt-1">{errors.venueType}</p>
