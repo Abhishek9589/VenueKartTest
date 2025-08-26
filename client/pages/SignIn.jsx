@@ -90,7 +90,7 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-venue-indigo via-venue-purple to-venue-lavender flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         {/* Session Expired Notice */}
         {showExpiredNotice && (
@@ -139,7 +139,7 @@ export default function SignIn() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Enter your email address"
                   value={formData.email}
                   onChange={handleChange}
                   required
