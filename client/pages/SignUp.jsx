@@ -246,7 +246,19 @@ export default function SignUp() {
             <div className="space-y-3">
               <Button
                 variant="outline"
-                onClick={loginWithGoogle}
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    setError('');
+                    await loginWithGoogle();
+                    navigate('/');
+                  } catch (error) {
+                    setError(error.message || 'Google authentication failed');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
                 className="w-full h-12 border-gray-300 hover:border-venue-indigo hover:bg-venue-indigo hover:text-white"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
