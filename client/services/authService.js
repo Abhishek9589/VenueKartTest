@@ -183,26 +183,44 @@ class AuthService {
   }
 
   initiateGoogleAuth() {
-    // Open Google auth in popup to avoid iframe restrictions
-    const width = 500;
-    const height = 600;
-    const left = window.innerWidth / 2 - width / 2;
-    const top = window.innerHeight / 2 - height / 2;
+    return new Promise((resolve, reject) => {
+      // Open Google auth in popup to avoid iframe restrictions
+      const width = 500;
+      const height = 600;
+      const left = window.innerWidth / 2 - width / 2;
+      const top = window.innerHeight / 2 - height / 2;
 
-    const popup = window.open(
-      `${API_BASE}/google`,
-      'googleAuth',
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-    );
+      const popup = window.open(
+        `${API_BASE}/google`,
+        'googleAuth',
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
 
-    // Listen for popup to close
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        // Refresh the page to check for auth tokens
-        window.location.reload();
-      }
-    }, 1000);
+      // Listen for messages from popup
+      const messageListener = (event) => {
+        if (event.origin !== window.location.origin) return;
+
+        if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+          this.setTokens(event.data.accessToken, event.data.refreshToken);
+          window.removeEventListener('message', messageListener);
+          resolve(event.data);
+        } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+          window.removeEventListener('message', messageListener);
+          reject(new Error(event.data.error || 'Google authentication failed'));
+        }
+      };
+
+      window.addEventListener('message', messageListener);
+
+      // Listen for popup to close (fallback)
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', messageListener);
+          reject(new Error('Authentication cancelled'));
+        }
+      }, 1000);
+    });
   }
 
   async forgotPassword(email) {
