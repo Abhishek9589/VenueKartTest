@@ -183,7 +183,26 @@ class AuthService {
   }
 
   initiateGoogleAuth() {
-    window.location.href = `${API_BASE}/google`;
+    // Open Google auth in popup to avoid iframe restrictions
+    const width = 500;
+    const height = 600;
+    const left = window.innerWidth / 2 - width / 2;
+    const top = window.innerHeight / 2 - height / 2;
+
+    const popup = window.open(
+      `${API_BASE}/google`,
+      'googleAuth',
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+    );
+
+    // Listen for popup to close
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        // Refresh the page to check for auth tokens
+        window.location.reload();
+      }
+    }, 1000);
   }
 
   async forgotPassword(email) {
