@@ -20,6 +20,7 @@ import Contact from "./pages/Contact";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import VerifyOTP from "./pages/VerifyOTP";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import AddVenue from "./pages/AddVenue";
 import Favorites from "./pages/Favorites";
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/signin" element={<AuthLayout><SignIn /></AuthLayout>} />
             <Route path="/signup" element={<AuthLayout><SignUp /></AuthLayout>} />
             <Route path="/verify-otp" element={<AuthLayout><VerifyOTP /></AuthLayout>} />
+            <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
             {/* Admin Dashboard Route */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
