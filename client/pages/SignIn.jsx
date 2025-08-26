@@ -75,17 +75,28 @@ export default function SignIn() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     try {
-      loginWithGoogle();
+      setIsLoading(true);
+      setError('');
+      await loginWithGoogle();
+      navigate('/');
     } catch (error) {
       console.error('Google sign in error:', error);
-      setError('Failed to sign in with Google. Please try again.');
+      if (error.message === 'Authentication cancelled') {
+        setError('Google sign-in was cancelled. Please try again.');
+      } else if (error.message === 'Popup blocked. Please allow popups and try again.') {
+        setError('Please allow popups in your browser and try again.');
+      } else {
+        setError(error.message || 'Failed to sign in with Google. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-venue-indigo via-venue-purple to-venue-lavender flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         {/* Session Expired Notice */}
         {showExpiredNotice && (
@@ -134,7 +145,7 @@ export default function SignIn() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Enter your email address"
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -200,6 +211,7 @@ export default function SignIn() {
               type="button"
               variant="outline"
               onClick={handleGoogleSignIn}
+              disabled={isLoading}
               className="w-full h-11 border-gray-300 hover:bg-gray-50 transition-all duration-200"
             >
               <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
@@ -220,7 +232,7 @@ export default function SignIn() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Sign in with Google
+              {isLoading ? 'Signing in...' : 'Sign in with Google'}
             </Button>
 
             <div className="text-center text-sm text-gray-600">

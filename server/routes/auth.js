@@ -12,24 +12,63 @@ router.get('/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   const scope = 'email profile';
-  
+
+  // Validate and set userType
+  const requestedUserType = req.query.userType || 'customer';
+  const userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
+
+  console.log(`Google OAuth initiated with userType: ${userType} (requested: ${requestedUserType})`);
+
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${clientId}&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `scope=${encodeURIComponent(scope)}&` +
     `response_type=code&` +
     `access_type=offline&` +
-    `prompt=consent`;
-  
+    `prompt=consent&` +
+    `state=${encodeURIComponent(JSON.stringify({ userType }))}`;
+
   res.redirect(authUrl);
 });
 
 router.get('/google/callback', async (req, res) => {
   try {
-    const { code, error } = req.query;
+    const { code, error, state } = req.query;
+
+    // Parse userType from state parameter
+    let userType = 'customer'; // default
+    if (state) {
+      try {
+        const stateData = JSON.parse(decodeURIComponent(state));
+        const requestedUserType = stateData.userType || 'customer';
+        // Validate userType
+        userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
+        console.log(`Google OAuth callback - userType from state: ${userType} (requested: ${requestedUserType})`);
+      } catch (parseError) {
+        console.log('Could not parse state parameter:', parseError);
+      }
+    } else {
+      console.log('No state parameter received, using default userType: customer');
+    }
     
     if (error || !code) {
-      return res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
+      return res.send(`
+        <script>
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage({
+                type: 'GOOGLE_AUTH_ERROR',
+                error: 'oauth_failed'
+              }, '${process.env.CLIENT_URL}');
+              setTimeout(() => window.close(), 100);
+            } catch (error) {
+              window.location.href = '${process.env.CLIENT_URL}/signin?error=oauth_failed';
+            }
+          } else {
+            window.location.href = '${process.env.CLIENT_URL}/signin?error=oauth_failed';
+          }
+        </script>
+      `);
     }
 
     // Exchange code for tokens
@@ -71,19 +110,20 @@ router.get('/google/callback', async (req, res) => {
 
     let user;
     if (userRows.length === 0) {
-      // Create new user
+      // Create new user with the specified user type
+      console.log(`Creating new user via Google OAuth with userType: ${userType} for email: ${googleUser.email}`);
       const [result] = await pool.execute(
         'INSERT INTO users (google_id, email, name, profile_picture, user_type, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
-        [googleUser.id, googleUser.email, googleUser.name, googleUser.picture, 'customer', true]
+        [googleUser.id, googleUser.email, googleUser.name, googleUser.picture, userType, true]
       );
-      
+
       user = {
         id: result.insertId,
         google_id: googleUser.id,
         email: googleUser.email,
         name: googleUser.name,
         profile_picture: googleUser.picture,
-        user_type: 'customer',
+        user_type: userType,
         is_verified: true
       };
     } else {
@@ -111,12 +151,54 @@ router.get('/google/callback', async (req, res) => {
       [user.id, refreshToken, expiresAt]
     );
 
-    // Redirect to frontend with tokens
-    const redirectUrl = `${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}`;
-    res.redirect(redirectUrl);
+    // For popup window, close popup and pass tokens to parent
+    res.send(`
+      <script>
+        console.log('Google auth callback successful');
+
+        // Store tokens in parent window
+        if (window.opener && !window.opener.closed) {
+          try {
+            window.opener.postMessage({
+              type: 'GOOGLE_AUTH_SUCCESS',
+              accessToken: '${accessToken}',
+              refreshToken: '${refreshToken}'
+            }, '${process.env.CLIENT_URL}');
+
+            // Give a moment for message to be processed
+            setTimeout(() => {
+              window.close();
+            }, 100);
+          } catch (error) {
+            console.error('Error posting message to parent:', error);
+            // Fallback: redirect normally
+            window.location.href = '${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}';
+          }
+        } else {
+          // Fallback: redirect normally if not in popup
+          window.location.href = '${process.env.CLIENT_URL}/?access_token=${accessToken}&refresh_token=${refreshToken}';
+        }
+      </script>
+    `);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect(`${process.env.CLIENT_URL}/signin?error=oauth_failed`);
+    res.send(`
+      <script>
+        if (window.opener && !window.opener.closed) {
+          try {
+            window.opener.postMessage({
+              type: 'GOOGLE_AUTH_ERROR',
+              error: 'oauth_failed'
+            }, '${process.env.CLIENT_URL}');
+            setTimeout(() => window.close(), 100);
+          } catch (error) {
+            window.location.href = '${process.env.CLIENT_URL}/signin?error=oauth_failed';
+          }
+        } else {
+          window.location.href = '${process.env.CLIENT_URL}/signin?error=oauth_failed';
+        }
+      </script>
+    `);
   }
 });
 
