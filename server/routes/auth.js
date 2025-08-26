@@ -111,6 +111,7 @@ router.get('/google/callback', async (req, res) => {
     let user;
     if (userRows.length === 0) {
       // Create new user with the specified user type
+      console.log(`Creating new user via Google OAuth with userType: ${userType} for email: ${googleUser.email}`);
       const [result] = await pool.execute(
         'INSERT INTO users (google_id, email, name, profile_picture, user_type, is_verified) VALUES (?, ?, ?, ?, ?, ?)',
         [googleUser.id, googleUser.email, googleUser.name, googleUser.picture, userType, true]
