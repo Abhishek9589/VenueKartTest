@@ -248,9 +248,13 @@ export default function SignUp() {
                 variant="outline"
                 onClick={async () => {
                   try {
+                    if (!userType) {
+                      setError('Please select whether you are a Customer or Venue Owner first.');
+                      return;
+                    }
                     setLoading(true);
                     setError('');
-                    await loginWithGoogle();
+                    await loginWithGoogle(userType);
                     navigate('/');
                   } catch (error) {
                     console.error('Google auth error in SignUp:', error);

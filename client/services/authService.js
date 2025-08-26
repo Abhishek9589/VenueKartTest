@@ -182,7 +182,7 @@ class AuthService {
     apiClient.clearTokens();
   }
 
-  initiateGoogleAuth() {
+  initiateGoogleAuth(userType = 'customer') {
     return new Promise((resolve, reject) => {
       // Open Google auth in popup to avoid iframe restrictions
       const width = 500;
@@ -190,8 +190,11 @@ class AuthService {
       const left = window.innerWidth / 2 - width / 2;
       const top = window.innerHeight / 2 - height / 2;
 
+      // Include userType as a query parameter
+      const authUrl = `${API_BASE}/google?userType=${encodeURIComponent(userType)}`;
+
       const popup = window.open(
-        `${API_BASE}/google`,
+        authUrl,
         'googleAuth',
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
