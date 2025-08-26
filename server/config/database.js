@@ -21,27 +21,9 @@ export async function initializeDatabase() {
   try {
     console.log('Starting database initialization...');
 
-    // Disable foreign key checks temporarily
-    await pool.execute('SET FOREIGN_KEY_CHECKS = 0');
-
-    // Drop tables in correct order (child tables first)
-    await pool.execute('DROP TABLE IF EXISTS bookings');
-    await pool.execute('DROP TABLE IF EXISTS favorites');
-    await pool.execute('DROP TABLE IF EXISTS venue_images');
-    await pool.execute('DROP TABLE IF EXISTS venue_facilities');
-    await pool.execute('DROP TABLE IF EXISTS venues');
-    await pool.execute('DROP TABLE IF EXISTS refresh_tokens');
-    await pool.execute('DROP TABLE IF EXISTS otp_verifications');
-    await pool.execute('DROP TABLE IF EXISTS users');
-
-    console.log('Tables dropped successfully');
-
-    // Re-enable foreign key checks
-    await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
-
     // Users table
     await pool.execute(`
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         google_id VARCHAR(255) UNIQUE,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -60,7 +42,7 @@ export async function initializeDatabase() {
 
     // Venues table
     await pool.execute(`
-      CREATE TABLE venues (
+      CREATE TABLE IF NOT EXISTS venues (
         id INT AUTO_INCREMENT PRIMARY KEY,
         owner_id INT NOT NULL,
         name VARCHAR(255) NOT NULL,
@@ -84,7 +66,7 @@ export async function initializeDatabase() {
 
     // Venue images table
     await pool.execute(`
-      CREATE TABLE venue_images (
+      CREATE TABLE IF NOT EXISTS venue_images (
         id INT AUTO_INCREMENT PRIMARY KEY,
         venue_id INT NOT NULL,
         image_url VARCHAR(500) NOT NULL,
@@ -96,7 +78,7 @@ export async function initializeDatabase() {
 
     // Venue facilities table
     await pool.execute(`
-      CREATE TABLE venue_facilities (
+      CREATE TABLE IF NOT EXISTS venue_facilities (
         id INT AUTO_INCREMENT PRIMARY KEY,
         venue_id INT NOT NULL,
         facility_name VARCHAR(100) NOT NULL,
@@ -107,7 +89,7 @@ export async function initializeDatabase() {
 
     // Bookings table
     await pool.execute(`
-      CREATE TABLE bookings (
+      CREATE TABLE IF NOT EXISTS bookings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         venue_id INT NOT NULL,
         customer_id INT NOT NULL,
@@ -170,7 +152,7 @@ export async function initializeDatabase() {
       )
     `);
 
-    console.log('Database tables initialized successfully');
+    console.log('Database tables verified/created successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
   }
