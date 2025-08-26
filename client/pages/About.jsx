@@ -10,11 +10,7 @@ import {
   MapPin,
   Star,
   Clock,
-  CheckCircle,
-  Building,
-  Search,
-  Handshake,
-  TrendingUp
+  CheckCircle
 } from 'lucide-react';
 
 export default function About() {
@@ -36,77 +32,75 @@ export default function About() {
         <div className="relative h-full flex flex-col justify-center px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 font-poppins">
-              About VenueKart
+              Our Story & Mission
             </h1>
             <p className="text-xl text-white/90 mb-8 max-w-4xl mx-auto leading-relaxed">
-              At VenueKart, we believe that finding the perfect space should be as seamless as planning your event. We are India's first full-stack platform dedicated to event venue discovery and booking.
+              VenueKart was born from a simple idea: finding and booking a great venue should be as easy as booking a flight. We partner with verified hosts to bring transparent pricing, real availability, and trusted reviews to event planners everywhere.
             </p>
 
-            {/* Statistics from PDF */}
+            {/* Statistics */}
             <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
               <div>
-                <div className="text-3xl md:text-4xl font-bold text-white">500+</div>
-                <div className="text-white/80 text-sm">Societies</div>
+                <div className="text-3xl md:text-4xl font-bold text-white">12k+</div>
+                <div className="text-white/80 text-sm">Verified Venues</div>
               </div>
               <div>
-                <div className="text-3xl md:text-4xl font-bold text-white">25+</div>
-                <div className="text-white/80 text-sm">Malls</div>
+                <div className="text-3xl md:text-4xl font-bold text-white">1.2M</div>
+                <div className="text-white/80 text-sm">Guests Served</div>
               </div>
               <div>
-                <div className="text-3xl md:text-4xl font-bold text-white">50+</div>
-                <div className="text-white/80 text-sm">IT Parks & Open Spaces</div>
+                <div className="text-3xl md:text-4xl font-bold text-white">98%</div>
+                <div className="text-white/80 text-sm">Success Rate</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Company Overview Section */}
+      {/* Why We Built VenueKart Section */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <h2 className="text-3xl font-bold text-venue-dark mb-6">
-              Who We Are
-            </h2>
-            <p className="text-gray-600 text-lg leading-relaxed">
-              Founded under <span className="font-semibold text-venue-indigo">Virtues Seven Events Pvt. Ltd.</span>, VenueKart brings together societies, malls, IT parks, and open spaces into one easy-to-use digital marketplace. Whether you're hosting a wedding, a corporate activation, a community gathering, or a brand promotion, VenueKart ensures that you discover, book, and manage venues with just a few clicks.
-            </p>
-          </div>
+          <h2 className="text-3xl font-bold text-venue-dark mb-6">
+            Why We Built VenueKart
+          </h2>
+          <p className="text-gray-600 text-lg leading-relaxed max-w-4xl">
+            Planners were juggling calls, emails, and guesswork to lock in a space. Hosts were struggling with no-shows and mismatched expectations. We created a platform that brings both sides together with clarity: verified listings, upfront pricing, and a seamless booking flow.
+          </p>
         </div>
       </section>
 
-      {/* Mission and Vision Section */}
+      {/* Mission and Values Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Our Mission */}
-            <div className="text-center lg:text-left">
-              <h3 className="text-3xl font-bold text-venue-dark mb-6">Our Mission</h3>
-              <p className="text-gray-600 leading-relaxed text-lg">
-                To transform venue booking into a hassle-free, transparent, and tech-driven experience, empowering both users and venue partners with tools for better planning, execution, and growth.
+            <div>
+              <h3 className="text-2xl font-bold text-venue-dark mb-4">Our Mission</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Make event planning simpler by giving everyone the same truth: accurate info, transparent pricing, and fast bookings.
               </p>
             </div>
             
-            {/* Our Vision */}
-            <div className="text-center lg:text-left">
-              <h3 className="text-3xl font-bold text-venue-dark mb-6">Our Vision</h3>
-              <p className="text-gray-600 leading-relaxed text-lg">
-                To become India's largest and most trusted venue booking ecosystem, enabling millions of events every year while driving value for venue owners and customers alike.
+            {/* Our Values */}
+            <div>
+              <h3 className="text-2xl font-bold text-venue-dark mb-4">Our Values</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Trust, transparency, and hospitality. We verify venues, protect payments, and celebrate memorable gatherings.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* What We Offer Section */}
+      {/* Detailed Values Section */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-venue-dark mb-4">
-              What We Offer
+              Why Choose VenueKart?
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              We provide a comprehensive platform that makes venue booking simple and transparent
+              We're committed to providing the best venue booking experience through our core values
             </p>
           </div>
 
@@ -115,11 +109,39 @@ export default function About() {
               <CardContent className="p-0">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Search className="h-6 w-6 text-venue-indigo" />
+                    <Shield className="h-6 w-6 text-venue-indigo" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Discover Easily</h3>
-                    <p className="text-gray-600">Explore a curated list of verified venues that meet your specific requirements.</p>
+                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Trusted Platform</h3>
+                    <p className="text-gray-600">All our venues are verified and quality-checked to ensure the best experience for your events.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-0">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Star className="h-6 w-6 text-venue-indigo" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Transparent Pricing</h3>
+                    <p className="text-gray-600">No hidden charges. What you see is what you pay. Complete transparency in all our dealings.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-0">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-6 w-6 text-venue-indigo" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-venue-dark mb-2">24/7 Support</h3>
+                    <p className="text-gray-600">Our dedicated support team is available round the clock to assist you with any queries.</p>
                   </div>
                 </div>
               </CardContent>
@@ -132,36 +154,8 @@ export default function About() {
                     <CheckCircle className="h-6 w-6 text-venue-indigo" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Seamless Booking</h3>
-                    <p className="text-gray-600">Hassle-free process with instant confirmations and transparent pricing.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-0">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Handshake className="h-6 w-6 text-venue-indigo" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Trusted Partners</h3>
-                    <p className="text-gray-600">Work with reliable spaces and event support you can count on.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-0">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="h-6 w-6 text-venue-indigo" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Growing Network</h3>
-                    <p className="text-gray-600">500+ societies, 25+ malls, 50+ IT parks & open spaces and growing every day.</p>
+                    <h3 className="text-xl font-semibold text-venue-dark mb-2">Quality Assurance</h3>
+                    <p className="text-gray-600">We maintain high standards and continuously monitor venue quality to exceed expectations.</p>
                   </div>
                 </div>
               </CardContent>
@@ -178,7 +172,7 @@ export default function About() {
               VenueKart by the Numbers
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Our growing network spans across India, connecting event planners with perfect venues
+              Our platform has helped thousands of customers find their perfect venues
             </p>
           </div>
 
@@ -187,46 +181,34 @@ export default function About() {
               <div className="w-16 h-16 bg-venue-lavender rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="h-8 w-8 text-venue-indigo" />
               </div>
-              <div className="text-3xl font-bold text-venue-dark mb-2">500+</div>
-              <div className="text-gray-600">Societies</div>
+              <div className="text-3xl font-bold text-venue-dark mb-2">10,000+</div>
+              <div className="text-gray-600">Happy Customers</div>
             </div>
             
             <div className="text-center">
               <div className="w-16 h-16 bg-venue-lavender rounded-full flex items-center justify-center mx-auto mb-4">
-                <Building className="h-8 w-8 text-venue-indigo" />
+                <Shield className="h-8 w-8 text-venue-indigo" />
               </div>
-              <div className="text-3xl font-bold text-venue-dark mb-2">25+</div>
-              <div className="text-gray-600">Malls</div>
+              <div className="text-3xl font-bold text-venue-dark mb-2">12,000+</div>
+              <div className="text-gray-600">Verified Venues</div>
             </div>
             
             <div className="text-center">
               <div className="w-16 h-16 bg-venue-lavender rounded-full flex items-center justify-center mx-auto mb-4">
                 <MapPin className="h-8 w-8 text-venue-indigo" />
               </div>
-              <div className="text-3xl font-bold text-venue-dark mb-2">50+</div>
-              <div className="text-gray-600">IT Parks & Open Spaces</div>
+              <div className="text-3xl font-bold text-venue-dark mb-2">100+</div>
+              <div className="text-gray-600">Cities Covered</div>
             </div>
             
             <div className="text-center">
               <div className="w-16 h-16 bg-venue-lavender rounded-full flex items-center justify-center mx-auto mb-4">
-                <Heart className="h-8 w-8 text-venue-indigo" />
+                <Award className="h-8 w-8 text-venue-indigo" />
               </div>
-              <div className="text-3xl font-bold text-venue-dark mb-2">∞</div>
-              <div className="text-gray-600">Celebrations to Life</div>
+              <div className="text-3xl font-bold text-venue-dark mb-2">5+</div>
+              <div className="text-gray-600">Years Experience</div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Closing Message */}
-      <section className="py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-venue-dark mb-6">
-            We Don't Just Book Venues
-          </h2>
-          <p className="text-xl text-gray-600 leading-relaxed">
-            At VenueKart, we help you <span className="font-semibold text-venue-indigo">bring your celebrations to life</span>.
-          </p>
         </div>
       </section>
 

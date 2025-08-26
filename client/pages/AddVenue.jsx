@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import venueService from '@/services/venueService';
 import { useNotifications } from '@/components/ui/notification';
 import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
-import { getUserFriendlyError } from '@/lib/errorMessages';
 
 // Using shared constants from venueOptions
 
@@ -116,11 +115,11 @@ export default function AddVenue() {
     try {
       await venueService.createVenue(formData, uploadedImages);
 
-      showSuccess('Venue added successfully! ����');
+      showSuccess('Venue added successfully! 🎉');
       navigate('/admin/dashboard');
     } catch (error) {
       console.error('Error adding venue:', error);
-      showError(getUserFriendlyError(error, 'general'));
+      showError(error.message || 'Failed to add venue. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { AlertCircle, Eye, EyeOff, Clock } from 'lucide-react';
-import { getUserFriendlyError } from '../lib/errorMessages';
 
 export default function SignIn() {
   const [formData, setFormData] = useState({
@@ -64,7 +63,13 @@ export default function SignIn() {
       navigate('/');
     } catch (error) {
       console.error('Login error:', error);
-      setError(getUserFriendlyError(error, 'signin'));
+      
+      // Check if it's a token-related error
+      if (error.message.includes('token') || error.message.includes('expired')) {
+        setError('Session expired. Please try signing in again.');
+      } else {
+        setError(error.message || 'Failed to sign in. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +83,13 @@ export default function SignIn() {
       navigate('/');
     } catch (error) {
       console.error('Google sign in error:', error);
-      setError(getUserFriendlyError(error, 'signin'));
+      if (error.message === 'Authentication cancelled') {
+        setError('Google sign-in was cancelled. Please try again.');
+      } else if (error.message === 'Popup blocked. Please allow popups and try again.') {
+        setError('Please allow popups in your browser and try again.');
+      } else {
+        setError(error.message || 'Failed to sign in with Google. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserFriendlyError } from '../lib/errorMessages';
 
 export default function VerifyOTP() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -89,10 +88,10 @@ export default function VerifyOTP() {
 
     try {
       await verifyOTP(email, otpCode);
-      setSuccess('Verification successful!');
+      setSuccess('OTP verified successfully!');
       setTimeout(() => navigate('/'), 1500);
     } catch (err) {
-      setError(getUserFriendlyError(err, 'otp'));
+      setError(err.message || 'Invalid verification code');
     } finally {
       setLoading(false);
     }
@@ -107,10 +106,10 @@ export default function VerifyOTP() {
       await resendOTP(email);
       setTimeLeft(300); // Reset timer
       setOtp(['', '', '', '', '', '']); // Clear OTP input
-      setSuccess('New verification code sent!');
+      setSuccess('New code sent!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(getUserFriendlyError(err, 'otp'));
+      setError(err.message || 'Failed to resend code');
     } finally {
       setResendLoading(false);
     }

@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Mail,
   Phone,
@@ -12,86 +11,33 @@ import {
   Clock,
   Send,
   CheckCircle,
-  AlertCircle,
-  Users,
-  Handshake,
-  Facebook,
-  Instagram,
-  Linkedin,
-  MessageCircle,
-  HelpCircle
+  AlertCircle
 } from 'lucide-react';
 
 const contactInfo = [
   {
-    title: "Customer Support",
-    description: "For general queries and support",
-    value: "support@venuekart.in",
-    icon: Mail,
-    link: "mailto:support@venuekart.in"
-  },
-  {
-    title: "Partnerships",
-    description: "For venue partnerships",
-    value: "partners@venuekart.in",
-    icon: Handshake,
-    link: "mailto:partners@venuekart.in"
+    title: "Email Us",
+    description: "Send us an email anytime",
+    value: "info@venuekart.in",
+    icon: Mail
   },
   {
     title: "Call Us",
-    description: "Mon-Fri from 8am to 8pm",
-    value: "+91-8806621666",
-    icon: Phone,
-    link: "tel:+918806621666"
+    description: "Mon-Fri from 8am to 5pm",
+    value: "8806621666",
+    icon: Phone
   },
   {
     title: "Visit Us",
-    description: "VenueKart (Virtues Seven Events Pvt. Ltd.)",
+    description: "Come say hello at our office",
     value: "Pune, Maharashtra, India",
-    icon: MapPin,
-    link: null
-  }
-];
-
-const socialLinks = [
-  {
-    name: "Facebook",
-    handle: "VenueKart.in",
-    icon: Facebook,
-    color: "text-blue-600"
+    icon: MapPin
   },
   {
-    name: "Instagram",
-    handle: "@venuekart.in",
-    icon: Instagram,
-    color: "text-pink-600"
-  },
-  {
-    name: "LinkedIn",
-    handle: "VenueKart.in",
-    icon: Linkedin,
-    color: "text-blue-700"
-  },
-  {
-    name: "WhatsApp",
-    handle: "Chat with us instantly",
-    icon: MessageCircle,
-    color: "text-green-600"
-  }
-];
-
-const faqs = [
-  {
-    question: "How can I book a venue?",
-    answer: "Simply browse venues on our platform, select your preferred one, and confirm your booking online."
-  },
-  {
-    question: "What if I want to cancel my booking?",
-    answer: "Please refer to our Cancellation & Refund Policy outlined in our Terms & Conditions."
-  },
-  {
-    question: "Can I list my venue on VenueKart?",
-    answer: "Yes! Drop us an email at partners@venuekart.in and our team will help onboard your venue."
+    title: "Working Hours",
+    description: "Our team is available",
+    value: "Mon-Fri: 9AM-7PM",
+    icon: Clock
   }
 ];
 
@@ -128,7 +74,7 @@ ${name}
     `.trim();
 
     // Create mailto link
-    const mailtoLink = `mailto:support@venuekart.in?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    const mailtoLink = `mailto:info@venuekart.in?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
 
     // Open email client
     window.location.href = mailtoLink;
@@ -161,10 +107,10 @@ ${name}
         <div className="relative h-full flex flex-col justify-center px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 font-poppins">
-              We'd Love to Hear from You!
+              Get in Touch
             </h1>
             <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
-              At VenueKart, we're committed to making your event planning and venue booking experience seamless. Whether you have a question, need support, or want to partner with us, our team is always ready to connect with you.
+              Have questions about venues or need help with your booking? We're here to help you every step of the way.
             </p>
           </div>
         </div>
@@ -175,17 +121,17 @@ ${name}
           {/* Contact Information */}
           <div className="lg:col-span-1">
             <h2 className="text-2xl font-bold text-venue-dark mb-6">
-              Get in Touch
+              Contact Information
             </h2>
             <p className="text-gray-600 mb-8">
               Reach out to us through any of these channels. We're always ready to assist you.
             </p>
 
-            <div className="space-y-6 mb-12">
+            <div className="space-y-6">
               {contactInfo.map((info, index) => {
                 const Icon = info.icon;
-                const content = (
-                  <div className="flex items-start space-x-4">
+                return (
+                  <div key={index} className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-venue-lavender rounded-lg flex items-center justify-center flex-shrink-0">
                       <Icon className="h-6 w-6 text-venue-indigo" />
                     </div>
@@ -196,35 +142,7 @@ ${name}
                     </div>
                   </div>
                 );
-
-                return (
-                  <div key={index}>
-                    {info.link ? (
-                      <a href={info.link} className="block hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors">
-                        {content}
-                      </a>
-                    ) : (
-                      <div>{content}</div>
-                    )}
-                  </div>
-                );
               })}
-            </div>
-
-            {/* Social Media Section */}
-            <div>
-              <h3 className="text-xl font-bold text-venue-dark mb-4">Find Us Online</h3>
-              <div className="space-y-3">
-                {socialLinks.map((social, index) => {
-                  const Icon = social.icon;
-                  return (
-                    <div key={index} className="flex items-center space-x-3 text-gray-600 hover:text-venue-indigo transition-colors">
-                      <Icon className={`h-5 w-5 ${social.color}`} />
-                      <span className="font-medium">{social.handle}</span>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           </div>
 
@@ -333,40 +251,6 @@ ${name}
                     <Send className="ml-2 h-5 w-5" />
                   </Button>
                 </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mt-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-venue-dark mb-4">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Find quick answers to common questions about VenueKart
-            </p>
-          </div>
-
-          <div className="max-w-4xl mx-auto">
-            <Card className="shadow-lg border-0">
-              <CardContent className="p-8">
-                <Accordion type="single" collapsible className="w-full">
-                  {faqs.map((faq, index) => (
-                    <AccordionItem key={index} value={`item-${index}`} className="border-b border-gray-200 last:border-b-0">
-                      <AccordionTrigger className="text-left py-6 hover:no-underline">
-                        <div className="flex items-center space-x-3">
-                          <HelpCircle className="h-5 w-5 text-venue-indigo flex-shrink-0" />
-                          <span className="font-semibold text-venue-dark">{faq.question}</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pb-6 text-gray-600 leading-relaxed">
-                        {faq.answer}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
               </CardContent>
             </Card>
           </div>

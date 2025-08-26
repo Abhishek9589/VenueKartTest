@@ -1,5 +1,3 @@
-import { getUserFriendlyError } from './errorMessages.js';
-
 class ApiClient {
   constructor() {
     this.baseURL = '';
@@ -47,10 +45,9 @@ class ApiClient {
   // Refresh access token using refresh token
   async refreshToken() {
     const { refreshToken } = this.getTokens();
-
+    
     if (!refreshToken) {
-      const userFriendlyMessage = getUserFriendlyError('No refresh token available', 'general');
-      throw new Error(userFriendlyMessage);
+      throw new Error('No refresh token available');
     }
 
     try {
@@ -63,15 +60,7 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: 'Token refresh failed' };
-        }
-        const originalError = errorData.error || 'Token refresh failed';
-        const userFriendlyMessage = getUserFriendlyError(originalError, 'general');
-        throw new Error(userFriendlyMessage);
+        throw new Error('Token refresh failed');
       }
 
       const data = await response.json();
@@ -83,9 +72,7 @@ class ApiClient {
       if (window.location.pathname !== '/signin') {
         window.location.href = '/signin?expired=true';
       }
-      // Make sure the error message is user-friendly
-      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
-      throw new Error(userFriendlyMessage);
+      throw error;
     }
   }
 
@@ -199,21 +186,15 @@ class ApiClient {
   // Helper method for API calls that need JSON response
   async callJson(url, options = {}) {
     const response = await this.call(url, options);
-
+    
     if (!response.ok) {
       let errorData;
-      let originalError;
-
       try {
         errorData = await response.json();
-        originalError = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
       } catch {
-        originalError = `HTTP ${response.status}: ${response.statusText}`;
+        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
       }
-
-      // Convert technical error to user-friendly message
-      const userFriendlyMessage = getUserFriendlyError(originalError, 'general');
-      throw new Error(userFriendlyMessage);
+      throw new Error(errorData.error || errorData.message || 'Request failed');
     }
 
     return response.json();

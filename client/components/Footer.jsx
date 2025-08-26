@@ -5,7 +5,7 @@ import { scrollToTop } from '@/lib/navigation';
 export default function Footer() {
   const quickLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Venues', href: '/venues' },
+    { name: 'Browse Venues', href: '/venues' },
     { name: 'About Us', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
@@ -18,15 +18,11 @@ export default function Footer() {
   ];
 
 
-  const companyPages = [
-    { name: 'Why VenueKart', href: '/why-venuekart' },
-    { name: 'Careers', href: '/careers' },
-    { name: 'Blog', href: '/blog' },
-  ];
-
-  const supportHelp = [
-    { name: 'Support', href: '/support' },
-    { name: 'FAQ', href: '/faq' },
+  const legal = [
+    { name: 'Help Center', href: '/help' },
+    { name: 'Terms of Service', href: '/terms' },
+    { name: 'Privacy Policy', href: '/privacy' },
+    { name: 'Refund Policy', href: '/refund' },
   ];
 
   return (
@@ -107,7 +103,7 @@ export default function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4 text-venue-purple" />
-                <span className="text-gray-300 text-sm">support@venuekart.in</span>
+                <span className="text-gray-300 text-sm">info@venuekart.in</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4 text-venue-purple" />
@@ -120,11 +116,11 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Company */}
+          {/* Legal & Policies */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Company</h3>
+            <h3 className="text-lg font-semibold mb-4">Legal & Policies</h3>
             <ul className="space-y-2">
-              {companyPages.map((item) => (
+              {legal.map((item) => (
                 <li key={item.name}>
                   <Link
                     to={item.href}
@@ -146,17 +142,14 @@ export default function Footer() {
               © 2025 VenueKart. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <Link to="/terms-and-conditions" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
+              <Link to="/terms" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
                 Terms & Conditions
               </Link>
-              <Link to="/privacy-policy" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
+              <Link to="/privacy" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
                 Privacy Policy
               </Link>
-              <Link to="/support" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
-                Support
-              </Link>
-              <Link to="/faq" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
-                FAQ
+              <Link to="/cookies" onClick={scrollToTop} className="text-gray-300 hover:text-venue-purple text-sm transition-colors">
+                Cookie Policy
               </Link>
             </div>
           </div>

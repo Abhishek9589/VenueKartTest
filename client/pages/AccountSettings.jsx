@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserFriendlyError } from '../lib/errorMessages';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -150,8 +149,7 @@ export default function AccountSettings() {
       });
 
       if (!response.ok) {
-        const userFriendlyMessage = getUserFriendlyError('Failed to update profile', 'general');
-        throw new Error(userFriendlyMessage);
+        throw new Error('Failed to update profile');
       }
 
       setSaveSuccess(true);
@@ -207,8 +205,7 @@ export default function AccountSettings() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       console.error('Error changing password:', error);
-      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'password-reset');
-      setErrors({ password: userFriendlyMessage });
+      setErrors({ password: error.message });
     } finally {
       setLoading(false);
     }
