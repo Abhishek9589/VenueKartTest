@@ -17,6 +17,8 @@ router.get('/google', (req, res) => {
   const requestedUserType = req.query.userType || 'customer';
   const userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
 
+  console.log(`Google OAuth initiated with userType: ${userType} (requested: ${requestedUserType})`);
+
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${clientId}&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -41,9 +43,12 @@ router.get('/google/callback', async (req, res) => {
         const requestedUserType = stateData.userType || 'customer';
         // Validate userType
         userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
+        console.log(`Google OAuth callback - userType from state: ${userType} (requested: ${requestedUserType})`);
       } catch (parseError) {
         console.log('Could not parse state parameter:', parseError);
       }
+    } else {
+      console.log('No state parameter received, using default userType: customer');
     }
     
     if (error || !code) {
