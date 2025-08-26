@@ -121,7 +121,7 @@ export default function UserDashboard() {
         body: JSON.stringify({
           name: profileData.name,
           email: profileData.email,
-          mobile_number: profileData.phone
+          mobileNumber: profileData.phone
         })
       });
       
