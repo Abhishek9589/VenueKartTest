@@ -196,15 +196,31 @@ class AuthService {
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
 
+      if (!popup) {
+        reject(new Error('Popup blocked. Please allow popups and try again.'));
+        return;
+      }
+
+      let isResolved = false;
+
       // Listen for messages from popup
       const messageListener = (event) => {
-        if (event.origin !== window.location.origin) return;
+        // Allow messages from current origin
+        const allowedOrigins = [window.location.origin, `${window.location.protocol}//${window.location.host}`];
+        if (!allowedOrigins.includes(event.origin)) {
+          console.log('Ignored message from:', event.origin);
+          return;
+        }
 
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+          isResolved = true;
+          clearInterval(checkClosed);
           this.setTokens(event.data.accessToken, event.data.refreshToken);
           window.removeEventListener('message', messageListener);
           resolve(event.data);
         } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+          isResolved = true;
+          clearInterval(checkClosed);
           window.removeEventListener('message', messageListener);
           reject(new Error(event.data.error || 'Google authentication failed'));
         }
@@ -212,14 +228,31 @@ class AuthService {
 
       window.addEventListener('message', messageListener);
 
-      // Listen for popup to close (fallback)
+      // Listen for popup to close (fallback) - give some time for message processing
       const checkClosed = setInterval(() => {
         if (popup.closed) {
-          clearInterval(checkClosed);
-          window.removeEventListener('message', messageListener);
-          reject(new Error('Authentication cancelled'));
+          // Give a small delay to allow message processing
+          setTimeout(() => {
+            if (!isResolved) {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', messageListener);
+              reject(new Error('Authentication cancelled'));
+            }
+          }, 500);
         }
       }, 1000);
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        if (!isResolved) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', messageListener);
+          if (!popup.closed) {
+            popup.close();
+          }
+          reject(new Error('Authentication timeout'));
+        }
+      }, 300000);
     });
   }
 
