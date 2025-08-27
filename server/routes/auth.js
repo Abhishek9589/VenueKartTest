@@ -10,17 +10,23 @@ const router = Router();
 // Google OAuth routes
 router.get('/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-  const scope = 'email profile';
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI; // e.g. http://localhost:8081/api/auth/google/callback
+  const scope = 'openid email profile'; // include openid for ID token
+
+  // Hard fail early if any critical env is missing
+  if (!clientId) return res.status(500).send('Missing GOOGLE_CLIENT_ID');
+  if (!redirectUri) return res.status(500).send('Missing GOOGLE_REDIRECT_URI');
 
   // Validate and set userType
   const requestedUserType = req.query.userType || 'customer';
   const userType = ['customer', 'venue-owner'].includes(requestedUserType) ? requestedUserType : 'customer';
 
   console.log(`Google OAuth initiated with userType: ${userType} (requested: ${requestedUserType})`);
+  console.log(`Using redirectUri: ${redirectUri}`);
 
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${clientId}&` +
+  const authUrl =
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(clientId)}&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `scope=${encodeURIComponent(scope)}&` +
     `response_type=code&` +
@@ -28,7 +34,7 @@ router.get('/google', (req, res) => {
     `prompt=consent&` +
     `state=${encodeURIComponent(JSON.stringify({ userType }))}`;
 
-  res.redirect(authUrl);
+  return res.redirect(authUrl);
 });
 
 router.get('/google/callback', async (req, res) => {
