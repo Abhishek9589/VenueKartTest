@@ -4,7 +4,7 @@
 
 ## 🌟 Overview
 
-VenueKart is a full-stack web application designed to revolutionize venue booking and event planning. The platform provides a modern, user-friendly interface for customers to discover, compare, and book venues for various events while offering venue owners powerful tools to manage their properties and bookings.
+VenueKart is a full-stack web application built to revolutionize venue booking and event planning. The platform provides a modern, user-friendly interface for customers to discover, compare, and book venues for various events while offering venue owners powerful tools to manage their properties and bookings.
 
 ### 🎯 Mission
 Making event planning effortless with verified venues and transparent pricing.
@@ -20,7 +20,7 @@ Making event planning effortless with verified venues and transparent pricing.
 - **🔍 Smart Search & Discovery**: Advanced filtering by location, capacity, amenities, and price
 - **✅ Verified Listings**: All venues thoroughly verified for authenticity and quality
 - **💰 Transparent Pricing**: Clear, upfront pricing with no hidden fees
-- **📱 Real-time Notifications**: Instant updates on booking status
+- **📱 Real-time Notifications**: Instant updates on booking status via email
 - **❤️ Favorites Management**: Save and organize preferred venues
 - **📊 User Dashboard**: Track inquiry history and booking status
 - **🔐 Secure Authentication**: OAuth and traditional login options
@@ -29,16 +29,17 @@ Making event planning effortless with verified venues and transparent pricing.
 - **🏢 Venue Management**: Complete venue profile creation and editing
 - **📋 Booking Management**: Real-time inquiry handling and booking workflow
 - **📈 Analytics Dashboard**: Revenue tracking and booking statistics
-- **🔔 Notification System**: Instant alerts for new inquiries
+- **🔔 Notification System**: Instant alerts for new inquiries via email
 - **📧 Automated Communications**: Email notifications for booking updates
 - **💼 Admin Portal**: Comprehensive management interface
 
 ### Platform Features
-- **🔒 Secure Payment Processing**: JWT-based authentication and secure transactions
+- **🔒 Secure Authentication**: JWT-based authentication with refresh token support
 - **☁️ Cloud Storage**: Cloudinary integration for image management
 - **📱 Responsive Design**: Optimized for desktop, tablet, and mobile
 - **⚡ Real-time Updates**: Live notifications and data synchronization
 - **🎨 Modern UI/UX**: Built with Radix UI and TailwindCSS
+- **📧 Email Integration**: Comprehensive email notification system
 
 ## 🛠️ Technology Stack
 
@@ -68,8 +69,8 @@ Making event planning effortless with verified venues and transparent pricing.
 - **Vite** - Build tool and dev server
 - **Vitest** - Unit testing framework
 - **Prettier** - Code formatting
-- **ESLint** - Code linting
 - **Concurrently** - Run multiple commands
+- **dotenv** - Environment variable management
 
 ## 📦 Installation & Setup
 
@@ -89,26 +90,31 @@ DB_USER=your_mysql_user
 DB_PASSWORD=your_mysql_password
 DB_NAME=venuekart
 
-# JWT Secrets
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
+# JWT Configuration
+JWT_ACCESS_SECRET=your_access_secret_key
+JWT_REFRESH_SECRET=your_refresh_secret_key
 
 # Cloudinary Configuration
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 
-# Email Configuration
+# Email Configuration (SMTP)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password
+VENUEKART_ADMIN_EMAIL=admin@venuekart.com
 
 # Google OAuth (Optional)
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:8080/api/auth/google/callback
 
-# Application URLs
+# Application Configuration
 CLIENT_URL=http://localhost:8080
+FRONTEND_URL=http://localhost:8080
+COOKIE_SECRET=your_cookie_secret
 ```
 
 ### Installation Steps
@@ -129,7 +135,7 @@ CLIENT_URL=http://localhost:8080
    - The application will automatically create tables on first run
 
 4. **Configure environment variables**
-   - Copy `.env.example` to `.env`
+   - Create `.env` file with the variables shown above
    - Update all required environment variables
 
 5. **Start the development server**
@@ -165,166 +171,263 @@ npm run format.fix      # Format code with Prettier
 client/
 ├── components/          # Reusable React components
 │   ├── ui/             # Base UI components (buttons, cards, etc.)
-│   └── ...             # Feature-specific components
+│   ├── Navigation.jsx   # Site navigation
+│   ├── Footer.jsx      # Site footer
+│   ├── AddVenueForm.jsx # Venue creation form
+│   ├── EditVenueForm.jsx # Venue editing form
+│   └── TokenExpiredNotice.jsx # Token expiration handling
 ├── pages/              # Route components
+│   ├── Index.jsx       # Homepage
+│   ├── Venues.jsx      # Venue listing
+│   ├── VenueDetail.jsx # Individual venue page
+│   ├── AdminDashboard.jsx # Owner dashboard
+│   ├── UserDashboard.jsx # Customer dashboard
+│   ├── SignIn.jsx      # Login page
+│   ├── SignUp.jsx      # Registration page
+│   ├── VerifyOTP.jsx   # Email verification
+│   └── [other pages...]
 ├── contexts/           # React Context providers
+│   └── AuthContext.jsx # Authentication state
 ├── hooks/              # Custom React hooks
+│   └── useFavorites.js # Favorites management
 ├── services/           # API service layers
-├── lib/                # Utility functions and configurations
-└── constants/          # Application constants
+│   ├── authService.js  # Authentication API
+│   ├── venueService.js # Venue management API
+│   └── notificationService.js # Notifications
+├── lib/                # Utility functions
+│   ├── apiClient.js    # HTTP client with auth
+│   ├── utils.js        # General utilities
+│   ├── navigation.js   # Navigation helpers
+│   └── errorMessages.js # Error handling
+├── constants/          # Application constants
+│   └── venueOptions.js # Venue types and options
+├── App.jsx             # Main app component with routing
+└── global.css          # Global styles and theme
 ```
 
 ### Backend Architecture
 ```
 server/
-├── config/             # Database and app configuration
+├── config/             # Configuration files
+│   └── database.js     # Database setup and schema
 ├── routes/             # Express route handlers
-├── middleware/         # Custom middleware functions
+│   ├── auth.js         # Authentication endpoints
+│   ├── venues.js       # Venue management endpoints
+│   ├── bookings.js     # Booking management endpoints
+│   ├── upload.js       # File upload endpoints
+│   ├── favorites.js    # Favorites endpoints
+│   └── demo.js         # Demo/test endpoints
+├── middleware/         # Express middleware
+│   └── auth.js         # Authentication middleware
 ├── services/           # Business logic services
-└── utils/              # Utility functions
+│   ├── emailService.js # Email notifications
+│   └── cloudinaryService.js # Image management
+├── utils/              # Server utility functions
+│   └── jwt.js          # JWT token utilities
+├── index.js            # Main server setup
+├── dev-server.js       # Development server
+└── node-build.js       # Production build
 ```
 
 ## 🔐 Authentication Flow
 
-### User Authentication
-1. **Registration**: Email/password or Google OAuth
-2. **Email Verification**: OTP-based email verification
-3. **Login**: JWT token generation
-4. **Token Refresh**: Automatic token renewal
-5. **Logout**: Token invalidation
+### User Authentication Options
+1. **Email/Password Registration**: Traditional signup with email verification
+2. **Google OAuth**: Social login integration
+3. **Email Verification**: OTP-based email verification system
+4. **Password Reset**: Secure password reset via email OTP
+
+### Token Management
+- **Access Tokens**: JWT tokens with 15-minute expiry
+- **Refresh Tokens**: 7-day expiry, stored in database
+- **Automatic Refresh**: Client-side token renewal
+- **Secure Logout**: Token invalidation and cleanup
 
 ### Authorization Levels
 - **Guest**: Browse venues, view details
 - **Customer**: Make inquiries, manage favorites, view booking history
 - **Venue Owner**: Manage venues, handle bookings, access analytics
-- **Admin**: Full platform management access
+- **Admin**: Full platform management access (future enhancement)
 
 ## 📊 Database Schema
 
 ### Core Tables
-- **users**: User profiles and authentication data
-- **venues**: Venue information and metadata
-- **bookings**: Booking records and inquiry management
-- **favorites**: User favorite venues
-- **venue_images**: Venue photo gallery
+- **users**: User profiles, authentication data, and user types
+- **venues**: Venue information, pricing, and metadata
+- **venue_images**: Venue photo galleries with Cloudinary URLs
 - **venue_facilities**: Venue amenities and features
+- **bookings**: Booking records, inquiries, and status management
+- **favorites**: User favorite venues relationships
 - **refresh_tokens**: JWT refresh token management
-- **otp_verifications**: Email verification codes
+- **otp_verifications**: Email verification and password reset codes
+
+### Key Relationships
+- Users can be customers or venue owners
+- Venue owners can manage multiple venues
+- Venues have multiple images and facilities
+- Bookings link customers to venues with status tracking
+- Favorites create many-to-many relationships between users and venues
 
 ## 🔄 API Endpoints
 
 ### Authentication (`/api/auth`)
-- `POST /register` - User registration
-- `POST /login` - User login
-- `POST /refresh` - Token refresh
-- `GET /me` - Get current user
-- `POST /logout` - User logout
-- `GET /google` - Google OAuth
-- `POST /verify-otp` - Email verification
+- `POST /register` - User registration with email verification
+- `POST /verify-otp` - Complete email verification
+- `POST /login` - Email/password login
+- `GET /google` - Initiate Google OAuth flow
+- `GET /google/callback` - Handle OAuth callback
+- `GET /me` - Get current authenticated user
+- `POST /refresh` - Refresh access token
+- `POST /forgot-password` - Request password reset
+- `POST /reset-password` - Reset password with OTP
+- `POST /logout` - Invalidate refresh token
 
 ### Venues (`/api/venues`)
-- `GET /` - Get all venues (public)
-- `GET /:id` - Get venue details
-- `POST /` - Create venue (venue owner)
-- `PUT /:id` - Update venue (venue owner)
-- `DELETE /:id` - Delete venue (venue owner)
+- `GET /` - List all venues with filtering and pagination
+- `GET /:id` - Get venue details with images and facilities
+- `POST /` - Create new venue (venue owners only)
+- `PUT /:id` - Update venue (venue owners only)
+- `DELETE /:id` - Delete venue (venue owners only)
 - `GET /owner/my-venues` - Get owner's venues
 
 ### Bookings (`/api/bookings`)
-- `POST /inquiry` - Submit venue inquiry
-- `GET /owner` - Get owner's bookings
-- `GET /customer` - Get customer's bookings
-- `PUT /:id/status` - Update booking status
-- `GET /owner/inquiry-count` - Get inquiry count
+- `POST /` - Create booking inquiry
+- `GET /owner` - Get bookings for venue owner
+- `GET /customer` - Get bookings for customer
+- `PUT /:id/status` - Update booking status (owner only)
+- `GET /owner/recent` - Get recent bookings for dashboard
 
 ### Additional APIs
 - **Favorites** (`/api/favorites`) - Manage user favorites
-- **Upload** (`/api/upload`) - Handle file uploads
+- **Upload** (`/api/upload`) - Handle image uploads to Cloudinary
+- **Demo** (`/api/demo`) - Health check and testing
 
 ## 🎨 Design System
 
 ### Color Palette
-- **Primary**: Venue Indigo (`#3C3B6E`)
-- **Secondary**: Venue Purple (`#6C63FF`)
-- **Accent**: Venue Lavender (`#E6E6FA`)
-- **Dark**: Venue Dark (`#1F1F2E`)
+- **Primary**: Venue Indigo (`#3C3B6E`) - Main brand color
+- **Secondary**: Venue Purple (`#6C63FF`) - Accent and hover states
+- **Accent**: Venue Lavender (`#E6E6FA`) - Light backgrounds
+- **Dark**: Venue Dark (`#1F1F2E`) - Dark mode and text
 
 ### Typography
-- **Primary Font**: Poppins (headings, UI elements)
-- **Secondary Font**: Inter (body text, forms)
+- **Primary Font**: Poppins - Headings and UI elements
+- **Secondary Font**: Inter - Body text and forms
 
 ### Component Library
-Built on Radix UI primitives with custom styling:
-- Form controls (Button, Input, Select, etc.)
-- Data display (Card, Badge, Avatar, etc.)
-- Overlay components (Dialog, Popover, Tooltip, etc.)
-- Navigation components (Tabs, Breadcrumb, etc.)
+Built on Radix UI primitives with custom VenueKart styling:
+- **Form Controls**: Button, Input, Select, Textarea, Checkbox
+- **Data Display**: Card, Badge, Avatar, Table
+- **Feedback**: Alert, Toast, Dialog, Tooltip
+- **Navigation**: Tabs, Breadcrumb, Menu, Pagination
 
 ## 🔧 Key Features Deep Dive
 
-### Smart Search System
-- **Location-based filtering**: City, area, landmark search
-- **Capacity filtering**: Guest count requirements
-- **Amenity filtering**: Multiple facility selection
-- **Price range filtering**: Budget-based venue discovery
-- **Real-time results**: Instant search updates
+### Smart Search & Discovery
+- **Location-based Search**: City, area, and landmark filtering
+- **Capacity Filtering**: Guest count requirements
+- **Amenity Filtering**: Multiple facility selection
+- **Price Range Filtering**: Budget-based venue discovery
+- **Real-time Results**: Instant search with pagination
 
-### Booking Management Workflow
-1. **Customer Inquiry**: Venue interest submission
-2. **Owner Notification**: Real-time email and dashboard alerts
-3. **Status Management**: Accept/decline functionality
-4. **Communication**: Automated email notifications
-5. **History Tracking**: Complete booking timeline
+### Venue Management System
+- **Complete CRUD Operations**: Create, read, update, delete venues
+- **Image Gallery Management**: Multiple image upload with Cloudinary
+- **Facility Management**: Add/remove venue amenities
+- **Pricing Configuration**: Flexible pricing structure
+- **Status Management**: Active/inactive venue states
 
-### Admin Dashboard Features
-- **Revenue Analytics**: Booking statistics and trends
-- **Venue Management**: Complete CRUD operations
-- **User Management**: Customer and owner oversight
-- **Notification Center**: Real-time alert system
-- **Settings Panel**: Platform configuration
+### Booking Workflow
+1. **Customer Inquiry**: Submit venue booking request with event details
+2. **Owner Notification**: Real-time email notification to venue owner
+3. **Status Management**: Owner can accept or decline bookings
+4. **Email Communications**: Automated notifications for all status changes
+5. **History Tracking**: Complete booking timeline and status history
+
+### Email Notification System
+- **OTP Verification**: Registration and password reset emails
+- **Booking Notifications**: Inquiry alerts and status updates
+- **Admin Notifications**: System-wide booking activity alerts
+- **Template System**: Professional email templates with branding
+
+### Image Management
+- **Cloudinary Integration**: Secure cloud storage with CDN
+- **Multiple Upload**: Support for venue image galleries
+- **Auto-optimization**: Automatic image compression and formatting
+- **Responsive Images**: Multiple sizes for different devices
 
 ## 🚀 Deployment
 
-### Production Environment
-The application is designed for deployment on:
+### Production Requirements
+- **Node.js Environment**: v18 or higher
+- **MySQL Database**: Cloud or on-premise
+- **Cloudinary Account**: For image storage
+- **SMTP Server**: For email notifications
+- **SSL Certificate**: For secure HTTPS connections
+
+### Deployment Options
 - **Frontend**: Netlify, Vercel, or static hosting
-- **Backend**: Heroku, Railway, or VPS
-- **Database**: MySQL on cloud providers (PlanetScale, AWS RDS)
-- **Images**: Cloudinary CDN
+- **Backend**: Heroku, Railway, DigitalOcean, or VPS
+- **Database**: MySQL on PlanetScale, AWS RDS, or Google Cloud SQL
+- **Images**: Cloudinary CDN (already integrated)
 
 ### Docker Support
-Docker configuration included for containerized deployment.
+```bash
+# Build and run with Docker
+docker build -t venuekart .
+docker run -p 8080:8080 venuekart
+```
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and add tests
+4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+### Development Guidelines
+- Follow existing code style and conventions
+- Add tests for new features
+- Update documentation for API changes
+- Ensure all tests pass before submitting PR
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
 For support and questions:
 - Create an issue in the repository
 - Contact the development team
-- Check the documentation
+- Check the [documentation](documentation.md) for technical details
 
 ## 🗺️ Roadmap
 
 ### Upcoming Features
-- **Mobile App**: React Native application
-- **Advanced Analytics**: Business intelligence dashboard
-- **Multi-language Support**: Internationalization
-- **Payment Integration**: Online payment processing
-- **Review System**: Venue rating and reviews
-- **Calendar Integration**: Availability management
-- **API Documentation**: Swagger/OpenAPI specs
+- **Mobile Application**: React Native app for iOS and Android
+- **Advanced Analytics**: Business intelligence dashboard with charts
+- **Payment Integration**: Online payment processing with Stripe/Razorpay
+- **Review System**: Venue rating and customer review system
+- **Calendar Integration**: Advanced availability management
+- **Multi-language Support**: Internationalization (i18n)
+- **Push Notifications**: Real-time mobile notifications
+- **Advanced Search**: AI-powered venue recommendations
+- **Vendor Management**: Multi-vendor marketplace features
+- **API Documentation**: Comprehensive Swagger/OpenAPI docs
+
+### Technical Improvements
+- **Performance Optimization**: Database indexing and query optimization
+- **Caching Layer**: Redis integration for improved performance
+- **Microservices**: Service decomposition for scalability
+- **GraphQL API**: Alternative API interface
+- **Real-time Features**: WebSocket integration for live updates
+- **Security Enhancements**: Advanced security features and monitoring
 
 ---
 
 **VenueKart** - Making event planning effortless with verified venues and transparent pricing.
+
+Built with ❤️ using modern web technologies for a seamless venue booking experience.
