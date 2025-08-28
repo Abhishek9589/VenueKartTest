@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create transporter
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: parseInt(process.env.EMAIL_PORT),
   secure: false,
@@ -836,38 +836,6 @@ export async function sendInquiryAcceptedToCustomer(customerEmail, inquiryData) 
               </div>
             </div>
 
-            <!-- Venue Owner Contact -->
-            <div style="margin: 30px 0;">
-              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Owner Contact Information</h3>
-              <div style="background: #fff5cd; padding: 20px; border-radius: 6px; border-left: 4px solid #f6e05e;">
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr>
-                    <td style="padding: 8px 0; color: #744210; font-weight: 600; width: 30%;">Email Address:</td>
-                    <td style="padding: 8px 0; color: #744210;">${owner.email || 'Not provided'}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #744210; font-weight: 600;">Phone Number:</td>
-                    <td style="padding: 8px 0; color: #744210;">${owner.phone || 'Not provided'}</td>
-                  </tr>
-                </table>
-                <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 4px; padding: 15px; margin-top: 15px;">
-                  <p style="color: #744210; margin: 0; font-size: 14px; line-height: 1.5;">
-                    <strong>Next Step:</strong> You can now contact the venue owner directly using the information above to finalize your booking arrangements.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Next Steps -->
-            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 6px; padding: 20px; margin: 30px 0;">
-              <h3 style="color: #234e52; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Next Steps</h3>
-              <ol style="color: #285e61; margin: 0; padding-left: 20px; line-height: 1.6;">
-                <li style="margin: 8px 0;">Contact the venue owner using the details provided above</li>
-                <li style="margin: 8px 0;">Discuss final arrangements, payment terms, and specific requirements</li>
-                <li style="margin: 8px 0;">Confirm your booking and finalize the contract directly with the venue</li>
-                <li style="margin: 8px 0;">Coordinate any additional services or special arrangements needed</li>
-              </ol>
-            </div>
 
             <div style="text-align: center; margin: 30px 0;">
               <p style="color: #4a5568; margin: 0; font-size: 16px; line-height: 1.6;">

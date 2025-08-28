@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AddVenueForm from '@/components/AddVenueForm';
 import EditVenueForm from '@/components/EditVenueForm';
 import notificationService from '../services/notificationService';
+import venueService from '../services/venueService';
 import apiClient from '../lib/apiClient';
 import { getUserFriendlyError } from '../lib/errorMessages';
 import {
@@ -890,9 +891,11 @@ export default function AdminDashboard() {
 
     try {
       setLoading(true);
-      await apiCall(`/api/venues/${venueId}`, {
-        method: 'DELETE'
-      });
+
+      // Use the proper venueService instead of custom apiCall
+      await venueService.deleteVenue(venueId);
+
+      showSuccess('Venue deleted successfully');
 
       // Reload venues and stats after successful deletion
       await loadVenues();

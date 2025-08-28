@@ -13,8 +13,7 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
     location: '',
     images: [],
     facilities: [''],
-    priceMin: '',
-    priceMax: ''
+    price: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -31,8 +30,7 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
         location: venue.location || '',
         images: venue.images || [venue.image || ''],
         facilities: venue.facilities || [''],
-        priceMin: venue.priceMin || venue.price || '',
-        priceMax: venue.priceMax || venue.price || ''
+        price: venue.price || venue.priceMin || ''
       });
     }
   }, [venue]);
@@ -124,14 +122,8 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
       newErrors.location = 'Location is required';
     }
     // Images are now optional - no validation needed
-    if (!formData.priceMin || formData.priceMin <= 0) {
-      newErrors.priceMin = 'Valid minimum price is required';
-    }
-    if (!formData.priceMax || formData.priceMax <= 0) {
-      newErrors.priceMax = 'Valid maximum price is required';
-    }
-    if (formData.priceMin && formData.priceMax && parseInt(formData.priceMin) >= parseInt(formData.priceMax)) {
-      newErrors.priceMax = 'Maximum price must be greater than minimum price';
+    if (!formData.price || formData.price <= 0) {
+      newErrors.price = 'Valid price is required';
     }
     if (formData.facilities.filter(f => f.trim()).length === 0) {
       newErrors.facilities = 'At least one facility is required';
@@ -206,8 +198,7 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
           images: imageUrls, // Use Cloudinary URLs
           facilities: formData.facilities.filter(f => f.trim()),
           footfall: parseInt(formData.footfall),
-          priceMin: parseInt(formData.priceMin),
-          priceMax: parseInt(formData.priceMax)
+          price: parseInt(formData.price)
         };
         await onSubmit({ ...venue, ...venueData });
         onClose();
@@ -305,37 +296,21 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
               </div>
             </div>
 
-            {/* Price Range */}
+            {/* Price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price Range per Day (₹) *
+                Price per Day (₹) *
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Input
-                    type="number"
-                    value={formData.priceMin}
-                    onChange={(e) => handleInputChange('priceMin', e.target.value)}
-                    placeholder="Minimum price"
-                    className={errors.priceMin ? 'border-red-500' : ''}
-                  />
-                  {errors.priceMin && (
-                    <p className="text-red-500 text-sm mt-1">{errors.priceMin}</p>
-                  )}
-                </div>
-                <div>
-                  <Input
-                    type="number"
-                    value={formData.priceMax}
-                    onChange={(e) => handleInputChange('priceMax', e.target.value)}
-                    placeholder="Maximum price"
-                    className={errors.priceMax ? 'border-red-500' : ''}
-                  />
-                  {errors.priceMax && (
-                    <p className="text-red-500 text-sm mt-1">{errors.priceMax}</p>
-                  )}
-                </div>
-              </div>
+              <Input
+                type="number"
+                value={formData.price}
+                onChange={(e) => handleInputChange('price', e.target.value)}
+                placeholder="Enter price"
+                className={errors.price ? 'border-red-500' : ''}
+              />
+              {errors.price && (
+                <p className="text-red-500 text-sm mt-1">{errors.price}</p>
+              )}
             </div>
 
             {/* Images */}

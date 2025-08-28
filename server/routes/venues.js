@@ -176,7 +176,21 @@ router.get('/owner/my-venues', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const ownerId = req.user.id;
-    const { venueName, description, location, footfall, priceMin, priceMax, images, facilities } = req.body;
+    const { venueName, description, location, footfall, price, priceMin, priceMax, images, facilities } = req.body;
+
+    // Handle both single price and price range formats
+    let finalPriceMin, finalPriceMax;
+    if (price !== undefined) {
+      // Single price format
+      finalPriceMin = parseInt(price);
+      finalPriceMax = parseInt(price);
+    } else if (priceMin !== undefined && priceMax !== undefined) {
+      // Price range format
+      finalPriceMin = parseInt(priceMin);
+      finalPriceMax = parseInt(priceMax);
+    } else {
+      return res.status(400).json({ error: 'Required fields: venueName, description, location, footfall, price (or priceMin/priceMax)' });
+    }
 
     console.log('Received venue creation request:', {
       ownerId,
@@ -184,27 +198,30 @@ router.post('/', authenticateToken, async (req, res) => {
       description,
       location,
       footfall,
+      price,
       priceMin,
       priceMax,
+      finalPriceMin,
+      finalPriceMax,
       imageCount: Array.isArray(images) ? images.length : 0,
       facilityCount: Array.isArray(facilities) ? facilities.length : 0
     });
 
     // Validation
-    if (!venueName || !description || !location || !footfall || priceMin === undefined || priceMax === undefined) {
-      return res.status(400).json({ error: 'Required fields: venueName, description, location, footfall, priceMin, priceMax' });
+    if (!venueName || !description || !location || !footfall) {
+      return res.status(400).json({ error: 'Required fields: venueName, description, location, footfall, price' });
     }
 
     if (parseInt(footfall) <= 0) {
       return res.status(400).json({ error: 'Footfall capacity must be greater than 0' });
     }
 
-    if (parseInt(priceMin) <= 0 || parseInt(priceMax) <= 0) {
-      return res.status(400).json({ error: 'Price range must be greater than 0' });
+    if (finalPriceMin <= 0 || finalPriceMax <= 0) {
+      return res.status(400).json({ error: 'Price must be greater than 0' });
     }
 
-    if (parseInt(priceMin) >= parseInt(priceMax)) {
-      return res.status(400).json({ error: 'Maximum price must be greater than minimum price' });
+    if (finalPriceMin > finalPriceMax) {
+      return res.status(400).json({ error: 'Maximum price must be greater than or equal to minimum price' });
     }
 
     // Images are optional - if provided, validate them
@@ -229,11 +246,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
     try {
       // Insert venue with price range
-      const averagePrice = (parseInt(priceMin) + parseInt(priceMax)) / 2;
+      const averagePrice = (finalPriceMin + finalPriceMax) / 2;
       const [venueResult] = await connection.execute(`
         INSERT INTO venues (owner_id, name, description, location, capacity, price_per_day, price_min, price_max)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [ownerId, venueName, description, location, parseInt(footfall), averagePrice, parseInt(priceMin), parseInt(priceMax)]);
+      `, [ownerId, venueName, description, location, parseInt(footfall), averagePrice, finalPriceMin, finalPriceMax]);
 
       const venueId = venueResult.insertId;
 
@@ -295,7 +312,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const ownerId = req.user.id;
-    const { venueName, description, location, footfall, priceMin, priceMax, images, facilities } = req.body;
+    const { venueName, description, location, footfall, price, priceMin, priceMax, images, facilities } = req.body;
+
+    // Handle both single price and price range formats
+    let finalPriceMin, finalPriceMax;
+    if (price !== undefined) {
+      // Single price format
+      finalPriceMin = parseInt(price);
+      finalPriceMax = parseInt(price);
+    } else if (priceMin !== undefined && priceMax !== undefined) {
+      // Price range format
+      finalPriceMin = parseInt(priceMin);
+      finalPriceMax = parseInt(priceMax);
+    } else {
+      // Keep existing values if no price update is provided
+      finalPriceMin = null;
+      finalPriceMax = null;
+    }
     
     // Check if venue belongs to the owner
     const [venues] = await pool.execute(
@@ -313,12 +346,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     try {
       // Update venue
-      const averagePrice = priceMin && priceMax ? (parseInt(priceMin) + parseInt(priceMax)) / 2 : null;
+      const averagePrice = finalPriceMin && finalPriceMax ? (finalPriceMin + finalPriceMax) / 2 : null;
       await connection.execute(`
         UPDATE venues
         SET name = ?, description = ?, location = ?, capacity = ?, price_per_day = ?, price_min = ?, price_max = ?
         WHERE id = ?
-      `, [venueName, description, location, footfall, averagePrice, priceMin, priceMax, id]);
+      `, [venueName, description, location, footfall, averagePrice, finalPriceMin, finalPriceMax, id]);
       
       // Delete old images and facilities
       await connection.execute('DELETE FROM venue_images WHERE venue_id = ?', [id]);
@@ -366,20 +399,20 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const ownerId = req.user.id;
-    
+
     // Check if venue belongs to the owner
     const [venues] = await pool.execute(
       'SELECT * FROM venues WHERE id = ? AND owner_id = ?',
       [id, ownerId]
     );
-    
+
     if (venues.length === 0) {
       return res.status(404).json({ error: 'Venue not found or access denied' });
     }
-    
+
     // Delete venue (cascade will handle related records)
     await pool.execute('DELETE FROM venues WHERE id = ?', [id]);
-    
+
     res.json({ message: 'Venue deleted successfully' });
   } catch (error) {
     console.error('Error deleting venue:', error);

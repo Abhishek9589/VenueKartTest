@@ -34,12 +34,27 @@ class AuthService {
         body: JSON.stringify({ email, name, userType, password, mobileNumber }),
       });
 
-      // Read response body once
+      // Handle response more safely
       let data = null;
+      let responseText = '';
+
       try {
-        data = await response.json();
+        // First try to get the response as text
+        responseText = await response.text();
+
+        // Then try to parse it as JSON
+        if (responseText) {
+          data = JSON.parse(responseText);
+        }
       } catch (jsonError) {
-        console.error('Failed to parse register response as JSON:', jsonError);
+        console.error('Failed to parse register response:', jsonError);
+        console.error('Response text:', responseText);
+
+        // If we can't parse JSON but have response text, use generic error
+        if (!response.ok) {
+          throw new Error('Registration failed. Please try again.');
+        }
+
         data = null;
       }
 
