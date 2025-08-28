@@ -32,6 +32,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AddVenue from "./pages/AddVenue";
 import Favorites from "./pages/Favorites";
 import UserDashboard from "./pages/UserDashboard";
+import PricingDemo from "./pages/PricingDemo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/add-venue" element={<AddVenue />} />
+            <Route path="/pricing-demo" element={<Layout><PricingDemo /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>

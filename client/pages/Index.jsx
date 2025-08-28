@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserFriendlyError } from '../lib/errorMessages';
+import { getPricingInfo } from '../lib/priceUtils';
 import {
   Search,
   MapPin,
@@ -112,15 +113,20 @@ export default function Index() {
       const data = await apiCall('/api/venues?limit=3');
 
       // Format venues data for display
-      const formattedVenues = data.map(venue => ({
-        id: venue.id,
-        name: venue.name,
-        location: venue.location,
-        capacity: `Up to ${venue.capacity} guests`,
-        price: `₹${parseFloat(venue.price_per_day || venue.price).toLocaleString()}`,
-        image: venue.images && venue.images.length > 0 ? venue.images[0] : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop",
-        facilities: venue.facilities || []
-      }));
+      const formattedVenues = data.map(venue => {
+        const basePrice = parseFloat(venue.price_per_day || venue.price);
+        const pricingInfo = getPricingInfo(basePrice, 'listing');
+
+        return {
+          id: venue.id,
+          name: venue.name,
+          location: venue.location,
+          capacity: `Up to ${venue.capacity} guests`,
+          price: pricingInfo.formattedPrice,
+          image: venue.images && venue.images.length > 0 ? venue.images[0] : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop",
+          facilities: venue.facilities || []
+        };
+      });
 
       setPopularVenues(formattedVenues);
     } catch (error) {

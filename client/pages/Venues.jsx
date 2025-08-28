@@ -10,6 +10,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserFriendlyError } from '../lib/errorMessages';
+import { getPricingInfo } from '../lib/priceUtils';
 import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
 import {
   MapPin,
@@ -409,7 +410,7 @@ export default function Venues() {
                         <div className="mt-auto space-y-3">
                           <div className="text-center">
                             <span className="text-xl font-bold text-venue-indigo">
-                              ₹{venue.price.toLocaleString()}
+                              {getPricingInfo(venue.price, 'listing').formattedPrice}
                             </span>
                             <span className="text-gray-500 text-sm ml-1">/day</span>
                           </div>
