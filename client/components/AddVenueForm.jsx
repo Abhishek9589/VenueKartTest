@@ -15,8 +15,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
     venueType: '',
     area: '',
     footfall: '',
-    priceMin: '',
-    priceMax: '',
+    price: '',
     facilities: [''],
     images: []
   });
@@ -148,17 +147,10 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
     }
 
     // Price validation
-    const priceMin = parseInt(formData.priceMin);
-    const priceMax = parseInt(formData.priceMax);
+    const price = parseInt(formData.price);
 
-    if (!formData.priceMin || isNaN(priceMin) || priceMin <= 0) {
-      newErrors.priceMin = 'Minimum price must be a number greater than 0';
-    }
-    if (!formData.priceMax || isNaN(priceMax) || priceMax <= 0) {
-      newErrors.priceMax = 'Maximum price must be a number greater than 0';
-    }
-    if (!isNaN(priceMin) && !isNaN(priceMax) && priceMin >= priceMax) {
-      newErrors.priceMax = 'Maximum price must be greater than minimum price';
+    if (!formData.price || isNaN(price) || price <= 0) {
+      newErrors.price = 'Price must be a number greater than 0';
     }
 
     // Note: Images and facilities are now optional (no validation required)
@@ -277,8 +269,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
           description: formData.description,
           location: `${formData.area}, Pune`,
           footfall: parseInt(formData.footfall),
-          priceMin: parseInt(formData.priceMin),
-          priceMax: parseInt(formData.priceMax),
+          price: parseInt(formData.price),
           images: imageUrls, // Use Cloudinary URLs instead of base64
           facilities: formData.facilities.filter(f => f.trim())
         };
@@ -296,8 +287,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
           venueType: '',
           area: '',
           footfall: '',
-          priceMin: '',
-          priceMax: '',
+          price: '',
           facilities: [''],
           images: []
         });
@@ -404,7 +394,7 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
               </div>
             </div>
 
-            {/* Footfall Capacity and Price Range */}
+            {/* Footfall Capacity and Price */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -421,31 +411,20 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
                   <p className="text-red-500 text-sm mt-1">{errors.footfall}</p>
                 )}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price Range per Day (₹) *
+                  Price per Day (₹) *
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="number"
-                    value={formData.priceMin}
-                    onChange={(e) => handleInputChange('priceMin', e.target.value)}
-                    placeholder="Minimum price"
-                    className={`h-10 ${errors.priceMin ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
-                  />
-                  <Input
-                    type="number"
-                    value={formData.priceMax}
-                    onChange={(e) => handleInputChange('priceMax', e.target.value)}
-                    placeholder="Maximum price"
-                    className={`h-10 ${errors.priceMax ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
-                  />
-                </div>
-                {(errors.priceMin || errors.priceMax) && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.priceMin || errors.priceMax}
-                  </p>
+                <Input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => handleInputChange('price', e.target.value)}
+                  placeholder="Price per day"
+                  className={`h-10 ${errors.price ? 'border-red-300' : 'border-gray-300'} focus:border-indigo-500 focus:ring-indigo-500`}
+                />
+                {errors.price && (
+                  <p className="text-red-500 text-sm mt-1">{errors.price}</p>
                 )}
               </div>
             </div>

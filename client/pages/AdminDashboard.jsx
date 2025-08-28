@@ -308,14 +308,13 @@ export default function AdminDashboard() {
                       <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-medium">NEW</span>
                     </div>
                     <p className="text-sm text-gray-600 ml-10">{inquiry.venue_name} • {new Date(inquiry.event_date).toLocaleDateString()} • {inquiry.guest_count} guests</p>
-                    <p className="text-sm text-gray-500 ml-10">{inquiry.customer_email}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-venue-dark mb-2">���{inquiry.amount.toLocaleString()}</p>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-venue-purple hover:bg-venue-indigo text-white"
                         onClick={() => handleBookingAction(inquiry.id, 'confirmed')}
                       >
                         Accept
@@ -337,7 +336,7 @@ export default function AdminDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={() => setActiveSection('bookings')}
-                    className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                    className="border-venue-purple text-venue-purple hover:bg-venue-lavender"
                   >
                     View All {bookings.filter(b => b.status === 'pending').length} Inquiries
                   </Button>
@@ -445,15 +444,15 @@ export default function AdminDashboard() {
                           size="sm"
                           variant="outline"
                           onClick={() => openEditForm(venue)}
+                          className="border-venue-indigo text-venue-indigo hover:bg-venue-lavender"
                         >
                           Edit
                         </Button>
-                        <Button size="sm" variant="outline">View</Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleDeleteVenue(venue.id, venue.name)}
-                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          className="text-red-600 hover:text-white hover:bg-red-600 border-red-300"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -513,7 +512,7 @@ export default function AdminDashboard() {
           variant={!statusFilter || statusFilter === 'all' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setStatusFilter('all')}
-          className="bg-venue-indigo hover:bg-venue-purple text-white"
+          className={!statusFilter || statusFilter === 'all' ? 'bg-venue-indigo hover:bg-venue-purple text-white' : 'border-venue-indigo text-venue-indigo hover:bg-venue-lavender'}
         >
           All Bookings ({bookings.length})
         </Button>
@@ -521,7 +520,7 @@ export default function AdminDashboard() {
           variant={statusFilter === 'pending' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setStatusFilter('pending')}
-          className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+          className={statusFilter === 'pending' ? 'bg-venue-purple hover:bg-venue-indigo text-white' : 'border-venue-purple text-venue-purple hover:bg-venue-lavender'}
         >
           Pending ({bookings.filter(b => b.status === 'pending').length})
         </Button>
@@ -529,7 +528,7 @@ export default function AdminDashboard() {
           variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setStatusFilter('confirmed')}
-          className="border-green-300 text-green-700 hover:bg-green-50"
+          className={statusFilter === 'confirmed' ? 'bg-venue-indigo hover:bg-venue-purple text-white' : 'border-venue-indigo text-venue-indigo hover:bg-venue-lavender'}
         >
           Confirmed ({bookings.filter(b => b.status === 'confirmed').length})
         </Button>
@@ -537,7 +536,7 @@ export default function AdminDashboard() {
           variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setStatusFilter('cancelled')}
-          className="border-red-300 text-red-700 hover:bg-red-50"
+          className={statusFilter === 'cancelled' ? 'bg-venue-dark hover:bg-gray-700 text-white' : 'border-venue-dark text-venue-dark hover:bg-gray-100'}
         >
           Declined ({bookings.filter(b => b.status === 'cancelled').length})
         </Button>
@@ -559,17 +558,16 @@ export default function AdminDashboard() {
                   <th className="text-left p-4">Guests</th>
                   <th className="text-left p-4">Amount</th>
                   <th className="text-left p-4">Status</th>
-                  <th className="text-left p-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="p-8 text-center text-gray-500">Loading bookings...</td>
+                    <td colSpan="6" className="p-8 text-center text-gray-500">Loading bookings...</td>
                   </tr>
                 ) : bookings.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="p-8 text-center text-gray-500">No bookings found</td>
+                    <td colSpan="6" className="p-8 text-center text-gray-500">No bookings found</td>
                   </tr>
                 ) : (
                   bookings
@@ -579,7 +577,6 @@ export default function AdminDashboard() {
                       <td className="p-4">
                         <div>
                           <p className="font-medium">{booking.customer_name}</p>
-                          <p className="text-sm text-gray-600">{booking.customer_email}</p>
                         </div>
                       </td>
                       <td className="p-4">{booking.venue_name}</td>
@@ -598,33 +595,6 @@ export default function AdminDashboard() {
                             <span className="text-xs text-gray-500">
                               Updated {new Date(booking.updated_at).toLocaleDateString()}
                             </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex gap-2">
-                          {booking.status === 'pending' ? (
-                            <>
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleBookingAction(booking.id, 'confirmed')}
-                              >
-                                Accept
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleBookingAction(booking.id, 'cancelled')}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button size="sm" variant="outline">View</Button>
-                              <Button size="sm" variant="outline">Contact</Button>
-                            </>
                           )}
                         </div>
                       </td>
@@ -833,7 +803,7 @@ export default function AdminDashboard() {
                   <Button
                     onClick={handleSaveAccount}
                     disabled={loading}
-                    className="bg-venue-indigo hover:bg-venue-purple text-white"
+                    className="bg-venue-indigo hover:bg-venue-purple text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {loading ? 'Saving...' : 'Save Changes'}
                   </Button>
@@ -850,6 +820,7 @@ export default function AdminDashboard() {
                       });
                     }}
                     variant="outline"
+                    className="border-venue-indigo text-venue-indigo hover:bg-venue-lavender"
                   >
                     Cancel
                   </Button>

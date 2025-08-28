@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create transporter
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransporter({
   host: process.env.EMAIL_HOST,
   port: parseInt(process.env.EMAIL_PORT),
   secure: false,
@@ -23,50 +23,75 @@ export async function sendOTPEmail(email, otp, name = 'User', purpose = 'Verific
       address: process.env.EMAIL_USER
     },
     to: email,
-    subject: isPasswordReset ? 'Your VenueKart Password Reset Code' :
-             isEmailUpdate ? 'Verify Your New Email Address' :
-             'Your VenueKart Verification Code',
+    subject: isPasswordReset ? 'VenueKart - Password Reset Verification' :
+             isEmailUpdate ? 'VenueKart - Email Address Verification' :
+             'VenueKart - Account Verification',
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 28px;">VenueKart</h1>
-            <p style="color: #64748b; margin: 10px 0 0 0;">Venue Booking Made Simple</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VenueKart Verification</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #3C3B6E 0%, #6C63FF 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto;" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;">Professional Venue Solutions</p>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px;">Hello ${name}!</h2>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">
+              ${isPasswordReset ? 'Password Reset Request' : isEmailUpdate ? 'Email Verification Required' : 'Account Verification Required'}
+            </h2>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Dear ${name},
+            </p>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              ${isPasswordReset
+                ? 'We received a request to reset your password. Please use the verification code below to proceed with resetting your password.'
+                : isEmailUpdate
+                ? 'To complete the update of your email address, please verify using the code below.'
+                : 'Thank you for registering with VenueKart. To activate your account, please verify your email address using the code below.'
+              }
+            </p>
 
-          <p style="color: #475569; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-            ${isPasswordReset
-              ? 'You requested to reset your password. Please use the verification code below to proceed:'
-              : isEmailUpdate
-              ? 'You requested to update your email address. Please use the verification code below to verify your new email:'
-              : 'Thank you for signing up with VenueKart. To complete your registration, please use the verification code below:'
-            }
-          </p>
+            <!-- Verification Code -->
+            <div style="text-align: center; margin: 40px 0;">
+              <div style="background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 30px; display: inline-block;">
+                <p style="color: #4a5568; margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Verification Code</p>
+                <div style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; color: #3C3B6E; letter-spacing: 8px; margin: 0;">
+                  ${otp}
+                </div>
+              </div>
+            </div>
 
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="background: #6C63FF; color: white; font-size: 32px; font-weight: bold; padding: 20px; border-radius: 8px; letter-spacing: 8px; display: inline-block;">
-              ${otp}
+            <div style="background: #f7fafc; border-left: 4px solid #6C63FF; padding: 20px; margin: 30px 0; border-radius: 0 4px 4px 0;">
+              <p style="color: #4a5568; margin: 0; font-size: 14px; line-height: 1.5;">
+                <strong>Important:</strong> This verification code will expire in 10 minutes for your security. If you did not request this ${isPasswordReset ? 'password reset' : isEmailUpdate ? 'email update' : 'verification'}, please ignore this email.
+              </p>
             </div>
           </div>
 
-          <p style="color: #64748b; font-size: 14px; text-align: center; margin-top: 30px;">
-            This code will expire in 10 minutes for security reasons.
-          </p>
-
-          <div style="border-top: 1px solid #e2e8f0; margin-top: 30px; padding-top: 20px; text-align: center;">
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-              ${isPasswordReset
-                ? 'If you didn\'t request a password reset, please ignore this email.'
-                : isEmailUpdate
-                ? 'If you didn\'t request an email update, please ignore this email.'
-                : 'If you didn\'t request this verification, please ignore this email.'
-              }
+          <!-- Footer -->
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 14px;">
+              This is an automated message from VenueKart. Please do not reply to this email.
+            </p>
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
+              © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -80,7 +105,7 @@ export async function sendOTPEmail(email, otp, name = 'User', purpose = 'Verific
   }
 }
 
-// Send venue inquiry email to venue owner (customer contact details hidden)
+// Send venue inquiry email to venue owner (customer contact details hidden, price removed)
 export async function sendVenueInquiryEmail(ownerEmail, inquiryData) {
   const { venue, customer, event, owner } = inquiryData;
 
@@ -92,73 +117,133 @@ export async function sendVenueInquiryEmail(ownerEmail, inquiryData) {
     to: ownerEmail,
     subject: `New Booking Inquiry - ${venue.name}`,
     html: `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- VenueKart Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6C63FF; padding-bottom: 20px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 32px; font-weight: 700;">VenueKart</h1>
-            <p style="color: #6C63FF; margin: 10px 0 0 0; font-size: 16px; font-weight: 500;">New Booking Inquiry</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Booking Inquiry</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #3C3B6E 0%, #6C63FF 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto;" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;">New Booking Inquiry</p>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px;">You have a new booking inquiry!</h2>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">New Booking Request</h2>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              You have received a new booking inquiry for your venue <strong>${venue.name}</strong>. Please review the details below.
+            </p>
 
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-            A customer is interested in booking your venue <strong style="color: #3C3B6E;">${venue.name}</strong>. Here are the details:
-          </p>
+            <!-- Venue Information -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Information</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Venue Details -->
-          <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6C63FF;">
-            <h3 style="color: #3C3B6E; margin-top: 0; font-size: 18px; font-weight: 600;">📍 Venue Details</h3>
-            <p style="margin: 8px 0;"><strong>Venue Name:</strong> ${venue.name}</p>
-            <p style="margin: 8px 0;"><strong>Location:</strong> ${venue.location}</p>
-            <p style="margin: 8px 0;"><strong>Price per Day:</strong> ₹${venue.price}</p>
-          </div>
+            <!-- Customer Information -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Customer Information</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #3C3B6E;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Customer Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${customer.name}</td>
+                  </tr>
+                </table>
+                <div style="background: #fff5cd; border: 1px solid #f6e05e; border-radius: 4px; padding: 15px; margin-top: 15px;">
+                  <p style="color: #744210; margin: 0; font-size: 14px; line-height: 1.5;">
+                    <strong>Privacy Notice:</strong> Customer contact details are protected and will be shared upon inquiry acceptance through your VenueKart dashboard.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          <!-- Customer Information (Limited) -->
-          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #f59e0b;">
-            <h3 style="color: #92400e; margin-top: 0; font-size: 18px; font-weight: 600;">👤 Customer Details</h3>
-            <p style="margin: 8px 0;"><strong>Customer Full Name:</strong> ${customer.name}</p>
-            <p style="color: #92400e; font-style: italic; margin-top: 15px; font-size: 14px;">ℹ️ Customer contact details are protected for privacy. VenueKart will share them upon inquiry acceptance.</p>
-          </div>
+            <!-- Event Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Event Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #38a169;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Special Requests:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.specialRequests || 'None specified'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Event Details -->
-          <div style="background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6;">
-            <h3 style="color: #5b21b6; margin-top: 0; font-size: 18px; font-weight: 600;">🎉 Event Details</h3>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p style="margin: 8px 0;"><strong>Special Requests:</strong> ${event.specialRequests || 'None'}</p>
-          </div>
+            <!-- Your Contact Information -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Your Contact Information</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #805ad5;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Email:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.email || ownerEmail}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Phone:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.phone || 'Not provided'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Venue Owner Details -->
-          <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #16a34a;">
-            <h3 style="color: #15803d; margin-top: 0; font-size: 18px; font-weight: 600;">🏢 Your Contact Information</h3>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${owner.email || ownerEmail}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${owner.phone || 'Not provided'}</p>
-          </div>
-
-          <!-- Action Required -->
-          <div style="background: #f0f9ff; padding: 25px; border-radius: 12px; border: 2px solid #0ea5e9; margin: 30px 0; text-align: center;">
-            <h3 style="color: #0c4a6e; margin-top: 0;">⏱️ Action Required</h3>
-            <p style="color: #0c4a6e; margin-bottom: 20px; font-size: 16px;">Please review this inquiry and respond through your VenueKart dashboard within 24 hours.</p>
-            <p style="color: #64748b; font-size: 14px;">Log in to your VenueKart account to accept or decline this inquiry.</p>
+            <!-- Action Required -->
+            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #234e52; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Action Required</h3>
+              <p style="color: #285e61; margin: 0; font-size: 14px; line-height: 1.5;">
+                Please review this inquiry and respond through your VenueKart dashboard within 24 hours. Log in to your account to accept or decline this booking request.
+              </p>
+            </div>
           </div>
 
           <!-- Footer -->
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 40px; padding-top: 25px; text-align: center;">
-            <div style="margin-bottom: 15px;">
-              <h3 style="color: #3C3B6E; margin: 0; font-size: 20px;">VenueKart</h3>
-              <p style="color: #64748b; margin: 5px 0; font-size: 14px;">Venue Booking Made Simple</p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0;">
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
+            </p>
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
               This inquiry was submitted through VenueKart. Customer contact details will be shared upon acceptance.
             </p>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
               © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -183,87 +268,174 @@ export async function sendInquiryNotificationToVenueKart(inquiryData) {
       address: process.env.EMAIL_USER
     },
     to: venuekartEmail,
-    subject: `New Venue Inquiry - ${venue.name}`,
+    subject: `[ADMIN] New Venue Inquiry - ${venue.name}`,
     html: `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- VenueKart Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6C63FF; padding-bottom: 20px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 32px; font-weight: 700;">VenueKart</h1>
-            <p style="color: #dc2626; margin: 10px 0 0 0; font-size: 16px; font-weight: 600;">🚨 ADMIN NOTIFICATION</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Notification - New Inquiry</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #e53e3e 0%, #fc8181 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto; filter: brightness(0) invert(1);" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 600;">ADMIN NOTIFICATION</p>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px;">New Venue Inquiry Received</h2>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">New Venue Inquiry Received</h2>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              A new venue inquiry has been submitted through the platform. Complete details are provided below for monitoring and quality assurance.
+            </p>
 
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-            A new venue inquiry has been submitted through the platform. Full details below:
-          </p>
+            <!-- Inquiry Summary -->
+            <div style="background: #fff5cd; border: 1px solid #f6e05e; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #744210; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Inquiry Summary</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #744210; font-weight: 600; width: 30%;">Venue:</td>
+                  <td style="padding: 8px 0; color: #744210;">${venue.name} ${venue.id ? `(ID: ${venue.id})` : ''}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #744210; font-weight: 600;">Customer:</td>
+                  <td style="padding: 8px 0; color: #744210;">${customer.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #744210; font-weight: 600;">Event Date:</td>
+                  <td style="padding: 8px 0; color: #744210;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #744210; font-weight: 600;">Event Type:</td>
+                  <td style="padding: 8px 0; color: #744210;">${event.type}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #744210; font-weight: 600;">Guest Count:</td>
+                  <td style="padding: 8px 0; color: #744210;">${event.guestCount}</td>
+                </tr>
+              </table>
+            </div>
 
-          <!-- Inquiry Summary Alert -->
-          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b; margin: 25px 0;">
-            <h3 style="color: #92400e; margin-top: 0; font-size: 18px; font-weight: 600;">📋 Inquiry Summary</h3>
-            <p style="margin: 8px 0;"><strong>Venue:</strong> ${venue.name} (ID: ${venue.id || 'N/A'})</p>
-            <p style="margin: 8px 0;"><strong>Customer:</strong> ${customer.name}</p>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-          </div>
+            <!-- Venue Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Price per Day:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">₹${venue.price}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Venue Details -->
-          <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6C63FF;">
-            <h3 style="color: #3C3B6E; margin-top: 0; font-size: 18px; font-weight: 600;">🏢 Venue Details</h3>
-            <p style="margin: 8px 0;"><strong>Venue Name:</strong> ${venue.name}</p>
-            <p style="margin: 8px 0;"><strong>Location:</strong> ${venue.location}</p>
-            <p style="margin: 8px 0;"><strong>Price per Day:</strong> ₹${venue.price}</p>
-          </div>
+            <!-- Customer Details (Full Access for Admin) -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Customer Details (Complete Information)</h3>
+              <div style="background: #fed7d7; padding: 20px; border-radius: 6px; border-left: 4px solid #e53e3e;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600; width: 30%;">Full Name:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600;">Email Address:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.email}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600;">Phone Number:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.phone}</td>
+                  </tr>
+                </table>
+                <div style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 4px; padding: 15px; margin-top: 15px;">
+                  <p style="color: #742a2a; margin: 0; font-size: 14px; line-height: 1.5;">
+                    <strong>Admin Access:</strong> Complete customer contact information is provided for administrative monitoring and support purposes.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          <!-- FULL Customer Details (Admin Gets Everything) -->
-          <div style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #ef4444;">
-            <h3 style="color: #dc2626; margin-top: 0; font-size: 18px; font-weight: 600;">👤 Customer Details (FULL ACCESS)</h3>
-            <p style="margin: 8px 0;"><strong>Full Name:</strong> ${customer.name}</p>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${customer.email}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${customer.phone}</p>
-            <p style="color: #dc2626; font-weight: 500; font-style: italic; margin-top: 15px; font-size: 14px;">⚠️ Admin receives full customer contact information</p>
-          </div>
+            <!-- Event Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Event Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #38a169;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Special Requests:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.specialRequests || 'None specified'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Event Details -->
-          <div style="background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6;">
-            <h3 style="color: #5b21b6; margin-top: 0; font-size: 18px; font-weight: 600;">🎉 Event Details</h3>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p style="margin: 8px 0;"><strong>Special Requests:</strong> ${event.specialRequests || 'None'}</p>
-          </div>
+            <!-- Venue Owner Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Owner Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #805ad5;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Email:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.email || 'Not provided'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Phone:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.phone || 'Not provided'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Venue Owner Details -->
-          <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #16a34a;">
-            <h3 style="color: #15803d; margin-top: 0; font-size: 18px; font-weight: 600;">🏠 Venue Owner Details</h3>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${owner.email || 'Not provided'}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${owner.phone || 'Not provided'}</p>
-          </div>
-
-          <!-- Admin Action Notes -->
-          <div style="background: #f0f9ff; padding: 25px; border-radius: 12px; border: 2px solid #0ea5e9; margin: 30px 0; text-align: center;">
-            <h3 style="color: #0c4a6e; margin-top: 0;">📊 Admin Monitoring</h3>
-            <p style="color: #0c4a6e; margin-bottom: 15px; font-size: 16px;">This inquiry has been logged for tracking and quality assurance.</p>
-            <p style="color: #64748b; font-size: 14px;">Customer contact details are protected from venue owner until inquiry is accepted.</p>
+            <!-- Admin Monitoring Notice -->
+            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #234e52; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Administrative Monitoring</h3>
+              <p style="color: #285e61; margin: 0; font-size: 14px; line-height: 1.5;">
+                This inquiry has been logged for tracking and quality assurance. Customer contact details are protected from venue owners until inquiry acceptance.
+              </p>
+            </div>
           </div>
 
           <!-- Footer -->
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 40px; padding-top: 25px; text-align: center;">
-            <div style="margin-bottom: 15px;">
-              <h3 style="color: #3C3B6E; margin: 0; font-size: 20px;">VenueKart</h3>
-              <p style="color: #64748b; margin: 5px 0; font-size: 14px;">Venue Booking Made Simple</p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0;">
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
+            </p>
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
               Inquiry submitted at ${new Date().toLocaleString('en-IN')}
             </p>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
               © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -289,59 +461,119 @@ export async function sendBookingConfirmationEmail(customerEmail, bookingData) {
     to: customerEmail,
     subject: `Booking Confirmed - ${venue.name}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 28px;">VenueKart</h1>
-            <p style="color: #64748b; margin: 10px 0 0 0;">Booking Confirmation</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Booking Confirmed</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #38a169 0%, #68d391 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto; filter: brightness(0) invert(1);" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;">Booking Confirmation</p>
           </div>
 
-          <div style="background: #dcfce7; padding: 20px; border-radius: 8px; border-left: 4px solid #16a34a; margin: 30px 0;">
-            <h2 style="color: #15803d; margin: 0 0 10px 0;">🎉 Booking Confirmed!</h2>
-            <p style="color: #166534; margin: 0; font-size: 16px;">Your venue booking has been confirmed by the venue owner.</p>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <!-- Confirmation Notice -->
+            <div style="background: #c6f6d5; border: 1px solid #38a169; border-radius: 6px; padding: 20px; margin: 0 0 30px 0; text-align: center;">
+              <h2 style="color: #276749; margin: 0 0 10px 0; font-size: 24px; font-weight: 600;">Booking Confirmed</h2>
+              <p style="color: #2f855a; margin: 0; font-size: 16px;">Your venue booking has been confirmed by the venue owner.</p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Dear ${customer.name},
+            </p>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Congratulations! Your booking request for <strong>${venue.name}</strong> has been confirmed. Please find your booking details below.
+            </p>
+
+            <!-- Booking Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Booking Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #38a169;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Booking ID:</td>
+                    <td style="padding: 8px 0; color: #2d3748; font-family: 'Courier New', monospace;">#${bookingId}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Total Amount:</td>
+                    <td style="padding: 8px 0; color: #2d3748; font-weight: 600;">₹${event.amount}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+
+            ${event.specialRequests && event.specialRequests !== 'None' ? `
+            <!-- Special Requests -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Special Requests</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #805ad5;">
+                <p style="color: #2d3748; margin: 0; font-size: 16px; line-height: 1.6;">${event.specialRequests}</p>
+              </div>
+            </div>
+            ` : ''}
+
+            <!-- Next Steps -->
+            <div style="background: #fff5cd; border: 1px solid #f6e05e; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #744210; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Next Steps</h3>
+              <ol style="color: #744210; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li style="margin: 8px 0;">The venue owner will contact you directly to finalize payment and event details</li>
+                <li style="margin: 8px 0;">Please keep this email as confirmation of your booking</li>
+                <li style="margin: 8px 0;">Contact the venue directly for any specific arrangements or requirements</li>
+              </ol>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <p style="color: #4a5568; margin: 0; font-size: 16px; line-height: 1.6;">
+                Thank you for choosing VenueKart for your event needs. We wish you a successful event!
+              </p>
+            </div>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px;">Hello ${customer.name}!</h2>
-
-          <p style="color: #475569; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-            Great news! Your booking request for <strong>${venue.name}</strong> has been confirmed. Here are your booking details:
-          </p>
-
-          <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #3C3B6E; margin-top: 0;">Booking Details</h3>
-            <p><strong>Booking ID:</strong> #${bookingId}</p>
-            <p><strong>Venue:</strong> ${venue.name}</p>
-            <p><strong>Location:</strong> ${venue.location}</p>
-            <p><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString()}</p>
-            <p><strong>Event Type:</strong> ${event.type}</p>
-            <p><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p><strong>Amount:</strong> ₹${event.amount}</p>
-          </div>
-
-          ${event.specialRequests && event.specialRequests !== 'None' ? `
-          <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #3C3B6E; margin-top: 0;">Special Requests</h3>
-            <p>${event.specialRequests}</p>
-          </div>
-          ` : ''}
-
-          <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 30px 0;">
-            <h3 style="color: #92400e; margin-top: 0;">Next Steps</h3>
-            <p style="color: #92400e; margin-bottom: 10px;">1. The venue owner will contact you directly to finalize payment and event details.</p>
-            <p style="color: #92400e; margin: 0;">2. Please keep this email as confirmation of your booking.</p>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="color: #475569; margin-bottom: 20px;">Thank you for choosing VenueKart for your event needs!</p>
-          </div>
-
-          <div style="border-top: 1px solid #e2e8f0; margin-top: 30px; padding-top: 20px; text-align: center;">
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+          <!-- Footer -->
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
+            </p>
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
               If you have any questions, please contact us or the venue owner directly.
+            </p>
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
+              © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -355,7 +587,6 @@ export async function sendBookingConfirmationEmail(customerEmail, bookingData) {
   }
 }
 
-// Send booking rejection email to customer
 // Send inquiry acceptance email to VenueKart admin
 export async function sendInquiryAcceptedToAdmin(inquiryData) {
   const { venue, customer, event, owner } = inquiryData;
@@ -367,67 +598,140 @@ export async function sendInquiryAcceptedToAdmin(inquiryData) {
       address: process.env.EMAIL_USER
     },
     to: venuekartEmail,
-    subject: `Venue Inquiry Accepted - ${venue.name}`,
+    subject: `[ADMIN] Venue Inquiry Accepted - ${venue.name}`,
     html: `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- VenueKart Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #16a34a; padding-bottom: 20px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 32px; font-weight: 700;">VenueKart</h1>
-            <p style="color: #16a34a; margin: 10px 0 0 0; font-size: 16px; font-weight: 600;">🎉 INQUIRY ACCEPTED</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Notification - Inquiry Accepted</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #38a169 0%, #68d391 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto; filter: brightness(0) invert(1);" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 600;">INQUIRY ACCEPTED</p>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px;">Venue Inquiry Has Been Accepted!</h2>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">Venue Inquiry Successfully Accepted</h2>
+            
+            <div style="background: #c6f6d5; border: 1px solid #38a169; border-radius: 6px; padding: 20px; margin: 0 0 30px 0;">
+              <h3 style="color: #276749; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">Status Update</h3>
+              <p style="color: #2f855a; margin: 0; font-size: 16px;">The venue owner has accepted the booking inquiry. Customer contact details have been shared.</p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              The following venue inquiry has been successfully accepted by the venue owner. All relevant details are provided below for administrative tracking.
+            </p>
 
-          <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 25px; border-radius: 12px; border-left: 4px solid #16a34a; margin: 25px 0;">
-            <h3 style="color: #15803d; margin-top: 0; font-size: 18px; font-weight: 600;">✅ Status Update</h3>
-            <p style="color: #15803d; margin: 8px 0; font-size: 16px; font-weight: 500;">The venue owner has ACCEPTED the booking inquiry.</p>
-          </div>
+            <!-- Complete inquiry details with same structure as admin notification -->
+            <!-- Venue Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Price per Day:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">₹${venue.price}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- All Inquiry Details (Same as initial admin email) -->
-          <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6C63FF;">
-            <h3 style="color: #3C3B6E; margin-top: 0; font-size: 18px; font-weight: 600;">🏢 Venue Details</h3>
-            <p style="margin: 8px 0;"><strong>Venue Name:</strong> ${venue.name}</p>
-            <p style="margin: 8px 0;"><strong>Location:</strong> ${venue.location}</p>
-            <p style="margin: 8px 0;"><strong>Price per Day:</strong> ₹${venue.price}</p>
-          </div>
+            <!-- Customer Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Customer Details</h3>
+              <div style="background: #fed7d7; padding: 20px; border-radius: 6px; border-left: 4px solid #e53e3e;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600; width: 30%;">Full Name:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600;">Email Address:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.email}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600;">Phone Number:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.phone}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <div style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #ef4444;">
-            <h3 style="color: #dc2626; margin-top: 0; font-size: 18px; font-weight: 600;">👤 Customer Details</h3>
-            <p style="margin: 8px 0;"><strong>Full Name:</strong> ${customer.name}</p>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${customer.email}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${customer.phone}</p>
-          </div>
+            <!-- Event Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Event Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #38a169;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Special Requests:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.specialRequests || 'None specified'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <div style="background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6;">
-            <h3 style="color: #5b21b6; margin-top: 0; font-size: 18px; font-weight: 600;">🎉 Event Details</h3>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p style="margin: 8px 0;"><strong>Special Requests:</strong> ${event.specialRequests || 'None'}</p>
-          </div>
-
-          <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #16a34a;">
-            <h3 style="color: #15803d; margin-top: 0; font-size: 18px; font-weight: 600;">🏠 Venue Owner Details</h3>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${owner.email || 'Not provided'}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${owner.phone || 'Not provided'}</p>
+            <!-- Venue Owner Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Owner Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #805ad5;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Email:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.email || 'Not provided'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Phone:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.phone || 'Not provided'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
           </div>
 
           <!-- Footer -->
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 40px; padding-top: 25px; text-align: center;">
-            <div style="margin-bottom: 15px;">
-              <h3 style="color: #3C3B6E; margin: 0; font-size: 20px;">VenueKart</h3>
-              <p style="color: #64748b; margin: 5px 0; font-size: 14px;">Venue Booking Made Simple</p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0;">
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
+            </p>
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
               Inquiry accepted at ${new Date().toLocaleString('en-IN')}
             </p>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
               © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -451,77 +755,143 @@ export async function sendInquiryAcceptedToCustomer(customerEmail, inquiryData) 
       address: process.env.EMAIL_USER
     },
     to: customerEmail,
-    subject: `Your Venue Inquiry Has Been Accepted - ${venue.name}`,
+    subject: `Venue Inquiry Accepted - ${venue.name}`,
     html: `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- VenueKart Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #16a34a; padding-bottom: 20px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 32px; font-weight: 700;">VenueKart</h1>
-            <p style="color: #16a34a; margin: 10px 0 0 0; font-size: 16px; font-weight: 600;">🎉 Great News!</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Inquiry Accepted</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #38a169 0%, #68d391 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto; filter: brightness(0) invert(1);" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;">Excellent News!</p>
           </div>
 
-          <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 25px; border-radius: 12px; border-left: 4px solid #16a34a; margin: 30px 0;">
-            <h2 style="color: #15803d; margin: 0 0 15px 0; font-size: 24px;">Your Venue Inquiry Has Been Accepted! 🎉</h2>
-            <p style="color: #166534; margin: 0; font-size: 16px;">The venue owner has accepted your booking inquiry for <strong>${venue.name}</strong>.</p>
-          </div>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <!-- Acceptance Notice -->
+            <div style="background: #c6f6d5; border: 1px solid #38a169; border-radius: 6px; padding: 20px; margin: 0 0 30px 0; text-align: center;">
+              <h2 style="color: #276749; margin: 0 0 10px 0; font-size: 24px; font-weight: 600;">Your Venue Inquiry Has Been Accepted</h2>
+              <p style="color: #2f855a; margin: 0; font-size: 16px;">The venue owner has accepted your booking inquiry for <strong>${venue.name}</strong>.</p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Dear ${customer.name},
+            </p>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              We are pleased to inform you that your venue inquiry has been accepted. The venue owner is interested in hosting your event and you can now proceed with the booking process.
+            </p>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px; font-size: 22px;">Hello ${customer.name}!</h2>
+            <!-- Venue Information -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Information</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Price per Day:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">₹${venue.price}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-            Fantastic news! Your venue inquiry has been accepted. Here are the details and next steps:
-          </p>
+            <!-- Your Event Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Your Event Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #38a169;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Special Requests:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.specialRequests || 'None specified'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- Venue Details -->
-          <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6C63FF;">
-            <h3 style="color: #3C3B6E; margin-top: 0; font-size: 18px; font-weight: 600;">🏢 Venue Information</h3>
-            <p style="margin: 8px 0;"><strong>Venue Name:</strong> ${venue.name}</p>
-            <p style="margin: 8px 0;"><strong>Location:</strong> ${venue.location}</p>
-            <p style="margin: 8px 0;"><strong>Price per Day:</strong> ₹${venue.price}</p>
-          </div>
+            <!-- Venue Owner Contact -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Owner Contact Information</h3>
+              <div style="background: #fff5cd; padding: 20px; border-radius: 6px; border-left: 4px solid #f6e05e;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #744210; font-weight: 600; width: 30%;">Email Address:</td>
+                    <td style="padding: 8px 0; color: #744210;">${owner.email || 'Not provided'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #744210; font-weight: 600;">Phone Number:</td>
+                    <td style="padding: 8px 0; color: #744210;">${owner.phone || 'Not provided'}</td>
+                  </tr>
+                </table>
+                <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 4px; padding: 15px; margin-top: 15px;">
+                  <p style="color: #744210; margin: 0; font-size: 14px; line-height: 1.5;">
+                    <strong>Next Step:</strong> You can now contact the venue owner directly using the information above to finalize your booking arrangements.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          <!-- Event Details -->
-          <div style="background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6;">
-            <h3 style="color: #5b21b6; margin-top: 0; font-size: 18px; font-weight: 600;">🎉 Your Event Details</h3>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p style="margin: 8px 0;"><strong>Special Requests:</strong> ${event.specialRequests || 'None'}</p>
-          </div>
+            <!-- Next Steps -->
+            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #234e52; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Next Steps</h3>
+              <ol style="color: #285e61; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li style="margin: 8px 0;">Contact the venue owner using the details provided above</li>
+                <li style="margin: 8px 0;">Discuss final arrangements, payment terms, and specific requirements</li>
+                <li style="margin: 8px 0;">Confirm your booking and finalize the contract directly with the venue</li>
+                <li style="margin: 8px 0;">Coordinate any additional services or special arrangements needed</li>
+              </ol>
+            </div>
 
-          <!-- Venue Owner Contact -->
-          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #f59e0b;">
-            <h3 style="color: #92400e; margin-top: 0; font-size: 18px; font-weight: 600;">📞 Venue Owner Contact</h3>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${owner.email || 'Not provided'}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${owner.phone || 'Not provided'}</p>
-            <p style="color: #92400e; font-style: italic; margin-top: 15px; font-size: 14px;">💡 You can now contact the venue owner directly to finalize your booking details.</p>
-          </div>
-
-          <!-- Next Steps -->
-          <div style="background: #f0f9ff; padding: 25px; border-radius: 12px; border: 2px solid #0ea5e9; margin: 30px 0;">
-            <h3 style="color: #0c4a6e; margin-top: 0; font-size: 18px;">📋 Next Steps</h3>
-            <ol style="color: #0c4a6e; margin: 15px 0; padding-left: 20px;">
-              <li style="margin: 8px 0;">Contact the venue owner using the details above</li>
-              <li style="margin: 8px 0;">Discuss final arrangements and payment terms</li>
-              <li style="margin: 8px 0;">Confirm your booking and finalize the contract</li>
-            </ol>
+            <div style="text-align: center; margin: 30px 0;">
+              <p style="color: #4a5568; margin: 0; font-size: 16px; line-height: 1.6;">
+                Thank you for choosing VenueKart. We hope you have a wonderful event!
+              </p>
+            </div>
           </div>
 
           <!-- Footer -->
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 40px; padding-top: 25px; text-align: center;">
-            <div style="margin-bottom: 15px;">
-              <h3 style="color: #3C3B6E; margin: 0; font-size: 20px;">VenueKart</h3>
-              <p style="color: #64748b; margin: 5px 0; font-size: 14px;">Venue Booking Made Simple</p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0;">
-              Thank you for choosing VenueKart for your venue booking needs!
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
             </p>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
+              We're here to help make your event successful. Best wishes!
+            </p>
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
               © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -546,67 +916,140 @@ export async function sendInquiryRejectedToAdmin(inquiryData) {
       address: process.env.EMAIL_USER
     },
     to: venuekartEmail,
-    subject: `Venue Inquiry Declined - ${venue.name}`,
+    subject: `[ADMIN] Venue Inquiry Declined - ${venue.name}`,
     html: `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- VenueKart Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ef4444; padding-bottom: 20px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 32px; font-weight: 700;">VenueKart</h1>
-            <p style="color: #ef4444; margin: 10px 0 0 0; font-size: 16px; font-weight: 600;">❌ INQUIRY DECLINED</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Notification - Inquiry Declined</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #e53e3e 0%, #fc8181 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto; filter: brightness(0) invert(1);" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 600;">INQUIRY DECLINED</p>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px;">Venue Inquiry Has Been Declined</h2>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">Venue Inquiry Has Been Declined</h2>
+            
+            <div style="background: #fed7d7; border: 1px solid #e53e3e; border-radius: 6px; padding: 20px; margin: 0 0 30px 0;">
+              <h3 style="color: #742a2a; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">Status Update</h3>
+              <p style="color: #742a2a; margin: 0; font-size: 16px;">The venue owner has declined the booking inquiry. Customer has been notified.</p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              The following venue inquiry has been declined by the venue owner. All relevant details are provided below for administrative tracking.
+            </p>
 
-          <div style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); padding: 25px; border-radius: 12px; border-left: 4px solid #ef4444; margin: 25px 0;">
-            <h3 style="color: #dc2626; margin-top: 0; font-size: 18px; font-weight: 600;">❌ Status Update</h3>
-            <p style="color: #dc2626; margin: 8px 0; font-size: 16px; font-weight: 500;">The venue owner has DECLINED the booking inquiry.</p>
-          </div>
+            <!-- Complete inquiry details - similar structure as other admin emails -->
+            <!-- Venue Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Price per Day:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">₹${venue.price}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <!-- All Inquiry Details (Same as initial admin email) -->
-          <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6C63FF;">
-            <h3 style="color: #3C3B6E; margin-top: 0; font-size: 18px; font-weight: 600;">🏢 Venue Details</h3>
-            <p style="margin: 8px 0;"><strong>Venue Name:</strong> ${venue.name}</p>
-            <p style="margin: 8px 0;"><strong>Location:</strong> ${venue.location}</p>
-            <p style="margin: 8px 0;"><strong>Price per Day:</strong> ₹${venue.price}</p>
-          </div>
+            <!-- Customer Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Customer Details</h3>
+              <div style="background: #fed7d7; padding: 20px; border-radius: 6px; border-left: 4px solid #e53e3e;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600; width: 30%;">Full Name:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600;">Email Address:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.email}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #742a2a; font-weight: 600;">Phone Number:</td>
+                    <td style="padding: 8px 0; color: #742a2a;">${customer.phone}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <div style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #ef4444;">
-            <h3 style="color: #dc2626; margin-top: 0; font-size: 18px; font-weight: 600;">👤 Customer Details</h3>
-            <p style="margin: 8px 0;"><strong>Full Name:</strong> ${customer.name}</p>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${customer.email}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${customer.phone}</p>
-          </div>
+            <!-- Event Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Event Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #38a169;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Special Requests:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.specialRequests || 'None specified'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <div style="background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6;">
-            <h3 style="color: #5b21b6; margin-top: 0; font-size: 18px; font-weight: 600;">🎉 Event Details</h3>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p style="margin: 8px 0;"><strong>Special Requests:</strong> ${event.specialRequests || 'None'}</p>
-          </div>
-
-          <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #16a34a;">
-            <h3 style="color: #15803d; margin-top: 0; font-size: 18px; font-weight: 600;">🏠 Venue Owner Details</h3>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${owner.email || 'Not provided'}</p>
-            <p style="margin: 8px 0;"><strong>Phone Number:</strong> ${owner.phone || 'Not provided'}</p>
+            <!-- Venue Owner Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Venue Owner Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #805ad5;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Email:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.email || 'Not provided'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Phone:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${owner.phone || 'Not provided'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
           </div>
 
           <!-- Footer -->
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 40px; padding-top: 25px; text-align: center;">
-            <div style="margin-bottom: 15px;">
-              <h3 style="color: #3C3B6E; margin: 0; font-size: 20px;">VenueKart</h3>
-              <p style="color: #64748b; margin: 5px 0; font-size: 14px;">Venue Booking Made Simple</p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0;">
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
+            </p>
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
               Inquiry declined at ${new Date().toLocaleString('en-IN')}
             </p>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
               © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -630,71 +1073,113 @@ export async function sendInquiryRejectedToCustomer(customerEmail, inquiryData) 
       address: process.env.EMAIL_USER
     },
     to: customerEmail,
-    subject: `Your Venue Inquiry Has Been Declined - ${venue.name}`,
+    subject: `Venue Inquiry Update - ${venue.name}`,
     html: `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- VenueKart Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6C63FF; padding-bottom: 20px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 32px; font-weight: 700;">VenueKart</h1>
-            <p style="color: #6C63FF; margin: 10px 0 0 0; font-size: 16px; font-weight: 500;">Inquiry Update</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Inquiry Update</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #3C3B6E 0%, #6C63FF 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto;" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;">Inquiry Update</p>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px; font-size: 22px;">Hello ${customer.name},</h2>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #2d3748; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">Inquiry Status Update</h2>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Dear ${customer.name},
+            </p>
+            
+            <div style="background: #fed7d7; border: 1px solid #e53e3e; border-radius: 6px; padding: 20px; margin: 0 0 30px 0;">
+              <h3 style="color: #742a2a; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">Inquiry Status</h3>
+              <p style="color: #742a2a; margin: 0; font-size: 16px;">Unfortunately, your venue inquiry for <strong>${venue.name}</strong> could not be accommodated at this time.</p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              We understand this may be disappointing. The venue owner was unable to accommodate your request for the specified date and requirements.
+            </p>
 
-          <div style="background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); padding: 25px; border-radius: 12px; border-left: 4px solid #ef4444; margin: 30px 0;">
-            <h3 style="color: #dc2626; margin: 0 0 15px 0; font-size: 20px;">Inquiry Status Update</h3>
-            <p style="color: #991b1b; margin: 0; font-size: 16px;">Unfortunately, your venue inquiry for <strong>${venue.name}</strong> could not be confirmed at this time.</p>
-          </div>
+            <!-- Inquiry Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Your Inquiry Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Special Requests:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.specialRequests || 'None specified'}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
 
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-            We understand this may be disappointing. The venue owner was unable to accommodate your request for the specified date and requirements.
-          </p>
+            <!-- Alternative Options -->
+            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #234e52; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Alternative Options</h3>
+              <ul style="color: #285e61; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li style="margin: 8px 0;"><strong>Browse alternative venues</strong> - We have many other excellent venues that might suit your needs</li>
+                <li style="margin: 8px 0;"><strong>Try different dates</strong> - The venue might be available on alternative dates</li>
+                <li style="margin: 8px 0;"><strong>Contact our support team</strong> - We can help you find suitable alternatives</li>
+                <li style="margin: 8px 0;"><strong>Modify requirements</strong> - Consider adjusting guest count or other specifications</li>
+              </ul>
+            </div>
 
-          <!-- Inquiry Details -->
-          <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6C63FF;">
-            <h3 style="color: #3C3B6E; margin-top: 0; font-size: 18px; font-weight: 600;">📋 Your Inquiry Details</h3>
-            <p style="margin: 8px 0;"><strong>Venue Name:</strong> ${venue.name}</p>
-            <p style="margin: 8px 0;"><strong>Location:</strong> ${venue.location}</p>
-            <p style="margin: 8px 0;"><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p style="margin: 8px 0;"><strong>Event Type:</strong> ${event.type}</p>
-            <p style="margin: 8px 0;"><strong>Guest Count:</strong> ${event.guestCount}</p>
-            <p style="margin: 8px 0;"><strong>Special Requests:</strong> ${event.specialRequests || 'None'}</p>
-          </div>
-
-          <!-- Alternative Options -->
-          <div style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border-left: 4px solid #0284c7;">
-            <h3 style="color: #0c4a6e; margin-top: 0; font-size: 18px; font-weight: 600;">🔍 What you can do next:</h3>
-            <ul style="color: #0c4a6e; margin: 15px 0; padding-left: 20px;">
-              <li style="margin: 8px 0;"><strong>Browse alternative venues</strong> - We have many other great venues that might suit your needs</li>
-              <li style="margin: 8px 0;"><strong>Try different dates</strong> - The venue might be available on other dates</li>
-              <li style="margin: 8px 0;"><strong>Contact our support team</strong> - We can help you find suitable alternatives</li>
-            </ul>
-          </div>
-
-          <!-- Browse More Venues CTA -->
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="color: #475569; margin-bottom: 20px; font-size: 16px;">Don't give up on your perfect event! Let us help you find another amazing venue.</p>
-            <a href="${process.env.FRONTEND_URL || 'https://venuekart.com'}/venues" style="background: linear-gradient(135deg, #6C63FF 0%, #8b5cf6 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-              🔍 Browse Other Venues
-            </a>
+            <!-- Browse More Venues CTA -->
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f7fafc; border-radius: 6px;">
+              <p style="color: #4a5568; margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                Don't let this setback stop your perfect event. Let us help you find another excellent venue.
+              </p>
+              <a href="${process.env.FRONTEND_URL || 'https://venuekart.com'}/venues" style="background: linear-gradient(135deg, #3C3B6E 0%, #6C63FF 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                Browse Other Venues
+              </a>
+            </div>
           </div>
 
           <!-- Footer -->
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 40px; padding-top: 25px; text-align: center;">
-            <div style="margin-bottom: 15px;">
-              <h3 style="color: #3C3B6E; margin: 0; font-size: 20px;">VenueKart</h3>
-              <p style="color: #64748b; margin: 5px 0; font-size: 14px;">Venue Booking Made Simple</p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0;">
-              We're sorry this didn't work out, but we're here to help you find the perfect venue for your event!
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
             </p>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
+              We're committed to helping you find the perfect venue for your event.
+            </p>
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
               © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
@@ -717,57 +1202,112 @@ export async function sendBookingRejectionEmail(customerEmail, bookingData) {
       address: process.env.EMAIL_USER
     },
     to: customerEmail,
-    subject: `Booking Update - ${venue.name}`,
+    subject: `Booking Status Update - ${venue.name}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-        <div style="background: white; padding: 40px; border-radius: 10px; border: 1px solid #e2e8f0;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3C3B6E; margin: 0; font-size: 28px;">VenueKart</h1>
-            <p style="color: #64748b; margin: 10px 0 0 0;">Booking Update</p>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Booking Update</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #3C3B6E 0%, #6C63FF 100%); padding: 40px 30px; text-align: center;">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F86425921e7704103a71faf5b04ebcd1a%2F4184ebb3262f4bbcb03f0987cf646790?format=webp&width=800" alt="VenueKart Logo" style="height: 60px; width: auto; margin: 0 0 15px 0; display: block; margin-left: auto; margin-right: auto;" />
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">VenueKart</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;">Booking Update</p>
           </div>
 
-          <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 30px 0;">
-            <h2 style="color: #dc2626; margin: 0 0 10px 0;">Booking Status Update</h2>
-            <p style="color: #991b1b; margin: 0; font-size: 16px;">Unfortunately, your booking request could not be confirmed.</p>
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <!-- Status Notice -->
+            <div style="background: #fed7d7; border: 1px solid #e53e3e; border-radius: 6px; padding: 20px; margin: 0 0 30px 0;">
+              <h2 style="color: #742a2a; margin: 0 0 10px 0; font-size: 20px; font-weight: 600;">Booking Status Update</h2>
+              <p style="color: #742a2a; margin: 0; font-size: 16px;">Unfortunately, your booking request could not be confirmed.</p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              Dear ${customer.name},
+            </p>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+              We regret to inform you that your booking request for <strong>${venue.name}</strong> could not be confirmed by the venue owner. We understand this is disappointing news.
+            </p>
+
+            <!-- Booking Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Booking Details</h3>
+              <div style="background: #f7fafc; padding: 20px; border-radius: 6px; border-left: 4px solid #6C63FF;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600; width: 30%;">Booking ID:</td>
+                    <td style="padding: 8px 0; color: #2d3748; font-family: 'Courier New', monospace;">#${bookingId}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Venue Name:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Location:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${venue.location}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Date:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Event Type:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.type}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4a5568; font-weight: 600;">Guest Count:</td>
+                    <td style="padding: 8px 0; color: #2d3748;">${event.guestCount}</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+
+            <!-- Alternative Options -->
+            <div style="background: #e6fffa; border: 1px solid #38b2ac; border-radius: 6px; padding: 20px; margin: 30px 0;">
+              <h3 style="color: #234e52; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">What You Can Do Next</h3>
+              <ol style="color: #285e61; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li style="margin: 8px 0;"><strong>Browse alternative venues</strong> - We have many other excellent venues that might suit your needs</li>
+                <li style="margin: 8px 0;"><strong>Try different dates</strong> - The venue might be available on other dates</li>
+                <li style="margin: 8px 0;"><strong>Contact our support team</strong> - Our team can help you find suitable alternatives</li>
+                <li style="margin: 8px 0;"><strong>Adjust your requirements</strong> - Consider modifying guest count or other specifications</li>
+              </ol>
+            </div>
+
+            <!-- Browse Venues CTA -->
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f7fafc; border-radius: 6px;">
+              <p style="color: #4a5568; margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                We're committed to helping you find the perfect venue for your event.
+              </p>
+              <a href="${process.env.FRONTEND_URL || 'https://venuekart.com'}" style="background: linear-gradient(135deg, #3C3B6E 0%, #6C63FF 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                Browse Other Venues
+              </a>
+            </div>
           </div>
 
-          <h2 style="color: #1e293b; margin-bottom: 20px;">Hello ${customer.name},</h2>
-
-          <p style="color: #475569; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-            We regret to inform you that your booking request for <strong>${venue.name}</strong> on ${new Date(event.date).toLocaleDateString()} could not be confirmed by the venue owner.
-          </p>
-
-          <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #3C3B6E; margin-top: 0;">Booking Details</h3>
-            <p><strong>Booking ID:</strong> #${bookingId}</p>
-            <p><strong>Venue:</strong> ${venue.name}</p>
-            <p><strong>Location:</strong> ${venue.location}</p>
-            <p><strong>Event Date:</strong> ${new Date(event.date).toLocaleDateString()}</p>
-            <p><strong>Event Type:</strong> ${event.type}</p>
-            <p><strong>Guest Count:</strong> ${event.guestCount}</p>
-          </div>
-
-          <div style="background: #e0f2fe; padding: 20px; border-radius: 8px; border-left: 4px solid #0284c7; margin: 30px 0;">
-            <h3 style="color: #0c4a6e; margin-top: 0;">What you can do next:</h3>
-            <p style="color: #0c4a6e; margin-bottom: 10px;">1. <strong>Browse alternative venues</strong> - We have many other great venues that might suit your needs.</p>
-            <p style="color: #0c4a6e; margin-bottom: 10px;">2. <strong>Try different dates</strong> - The venue might be available on other dates.</p>
-            <p style="color: #0c4a6e; margin: 0;">3. <strong>Contact us</strong> - Our team can help you find suitable alternatives.</p>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="color: #475569; margin-bottom: 20px;">We're sorry this didn't work out, but we're here to help you find the perfect venue for your event!</p>
-            <a href="${process.env.FRONTEND_URL || 'https://venuekart.com'}" style="background: #6C63FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 500;">
-              Browse Other Venues
-            </a>
-          </div>
-
-          <div style="border-top: 1px solid #e2e8f0; margin-top: 30px; padding-top: 20px; text-align: center;">
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+          <!-- Footer -->
+          <div style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <h4 style="color: #2d3748; margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">VenueKart</h4>
+            <p style="color: #718096; margin: 0 0 15px 0; font-size: 14px;">
+              Professional Venue Solutions
+            </p>
+            <p style="color: #718096; margin: 0 0 10px 0; font-size: 12px;">
               Thank you for choosing VenueKart. We appreciate your understanding.
+            </p>
+            <p style="color: #a0aec0; margin: 0; font-size: 12px;">
+              © ${new Date().getFullYear()} VenueKart. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </body>
+      </html>
     `
   };
 
