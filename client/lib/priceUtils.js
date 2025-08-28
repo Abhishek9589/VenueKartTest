@@ -31,7 +31,7 @@ export const calculateListingPrice = (basePrice) => {
 
 /**
  * Calculate detailed price breakdown for venue details page
- * 
+ *
  * @param {number} basePrice - The base price set by venue owner
  * @returns {object} Detailed price breakdown object
  */
@@ -44,15 +44,15 @@ export const calculatePriceBreakdown = (basePrice) => {
       subtotal: 0,
       discount: 0,
       finalPrice: 0,
-      discountPercentage: NEW_LAUNCH_DISCOUNT_RATE * 100
+      discountPercentage: PLATFORM_FEE_RATE * 100
     };
   }
 
   const gst = basePrice * GST_RATE;
   const platformFee = basePrice * PLATFORM_FEE_RATE;
   const subtotal = basePrice + gst + platformFee;
-  const discount = subtotal * NEW_LAUNCH_DISCOUNT_RATE;
-  const finalPrice = subtotal - discount;
+  const discount = platformFee; // Discount equals platform fee
+  const finalPrice = subtotal - discount; // This equals basePrice + gst
 
   return {
     basePrice: Math.round(basePrice),
@@ -61,7 +61,7 @@ export const calculatePriceBreakdown = (basePrice) => {
     subtotal: Math.round(subtotal),
     discount: Math.round(discount),
     finalPrice: Math.round(finalPrice),
-    discountPercentage: NEW_LAUNCH_DISCOUNT_RATE * 100
+    discountPercentage: PLATFORM_FEE_RATE * 100
   };
 };
 
@@ -147,7 +147,7 @@ export const getPriceBreakdownComponent = (basePrice) => {
         type: 'subtotal'
       },
       {
-        label: `Discount (${breakdown.discountPercentage}%)`,
+        label: `Platform Fee Waived (${breakdown.discountPercentage}%)`,
         value: -breakdown.discount,
         formatted: `-${formatPrice(breakdown.discount)}`,
         type: 'discount'
@@ -159,7 +159,7 @@ export const getPriceBreakdownComponent = (basePrice) => {
         type: 'final'
       }
     ],
-    discountNote: `${breakdown.discountPercentage}% discount applied due to new launch.`
+    discountNote: `Platform fee waived as new launch promotion.`
   };
 };
 

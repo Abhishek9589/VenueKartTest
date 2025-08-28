@@ -385,35 +385,6 @@ export default function VenueDetail() {
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="bg-gray-50 rounded-lg p-4 border-2 border-venue-indigo/10">
-                        <h3 className="text-lg font-semibold text-venue-dark mb-3">Price Breakdown</h3>
-                        {(() => {
-                          const priceBreakdown = getPriceBreakdownComponent(venue.price);
-                          return (
-                            <div className="space-y-2">
-                              {priceBreakdown.items.map((item, index) => (
-                                <div key={index} className={`flex justify-between text-sm ${
-                                  item.type === 'subtotal' ? 'border-t pt-2 mt-2 font-medium' :
-                                  item.type === 'discount' ? 'text-green-600 font-medium' :
-                                  item.type === 'final' ? 'border-t pt-2 mt-2 text-lg font-bold text-venue-indigo' :
-                                  ''
-                                }`}>
-                                  <span>{item.label}:</span>
-                                  <span>{item.formatted}</span>
-                                </div>
-                              ))}
-                              <div className="mt-3 pt-2 border-t border-gray-200">
-                                <p className="text-xs text-green-600 font-medium">
-                                  {priceBreakdown.discountNote}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                        <div className="mt-2 text-xs text-gray-500 text-center">per day</div>
-                      </div>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -447,10 +418,48 @@ export default function VenueDetail() {
 
             </div>
 
-            {/* Right Column - Booking */}
+            {/* Right Column - Price Breakdown & Booking */}
             <div className="space-y-6">
-              {/* Booking Card */}
-              <Card className="sticky top-6">
+              {/* Price Breakdown Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-xl">
+                    <CalendarIcon className="h-5 w-5 mr-2" />
+                    Price Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gray-50 rounded-lg p-4 border-2 border-venue-indigo/10">
+                    {(() => {
+                      const priceBreakdown = getPriceBreakdownComponent(venue.price);
+                      return (
+                        <div className="space-y-2">
+                          {priceBreakdown.items.map((item, index) => (
+                            <div key={index} className={`flex justify-between text-sm ${
+                              item.type === 'subtotal' ? 'border-t pt-2 mt-2 font-medium' :
+                              item.type === 'discount' ? 'text-green-600 font-medium' :
+                              item.type === 'final' ? 'border-t pt-2 mt-2 text-lg font-bold text-venue-indigo' :
+                              ''
+                            }`}>
+                              <span>{item.label}:</span>
+                              <span>{item.formatted}</span>
+                            </div>
+                          ))}
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs text-green-600 font-medium">
+                              {priceBreakdown.discountNote}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div className="mt-2 text-xs text-gray-500 text-center">per day</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Book This Venue Card */}
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center text-xl">
                     <CalendarIcon className="h-5 w-5 mr-2" />
