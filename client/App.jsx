@@ -14,25 +14,20 @@ import ErrorBoundary from "./components/ui/error-boundary";
 import TokenExpiredNotice from "./components/TokenExpiredNotice";
 import Index from "./pages/Index";
 import Venues from "./pages/Venues";
-import VenueDetail from "./pages/VenueDetail";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
-import WhyVenueKart from "./pages/WhyVenueKart";
-import Careers from "./pages/Careers";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsAndConditions from "./pages/TermsAndConditions";
-import Support from "./pages/Support";
-import FAQ from "./pages/FAQ";
-import Blog from "./pages/Blog";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import VerifyOTP from "./pages/VerifyOTP";
 import ForgotPassword from "./pages/ForgotPassword";
-import AdminDashboard from "./pages/AdminDashboard";
-import AddVenue from "./pages/AddVenue";
+import VenueDetail from "./pages/VenueDetail";
 import Favorites from "./pages/Favorites";
 import UserDashboard from "./pages/UserDashboard";
-import PricingDemo from "./pages/PricingDemo";
+import AdminDashboard from "./pages/AdminDashboard";
+import AddVenue from "./pages/AddVenue";
+import FAQ from "./pages/FAQ";
+import Support from "./pages/Support";
+import Blog from "./pages/Blog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,12 +64,8 @@ const App = () => (
             <Route path="/dashboard" element={<Layout><UserDashboard /></Layout>} />
             <Route path="/about" element={<Layout><About /></Layout>} />
             <Route path="/contact" element={<Layout><Contact /></Layout>} />
-            <Route path="/why-venuekart" element={<Layout><WhyVenueKart /></Layout>} />
-            <Route path="/careers" element={<Layout><Careers /></Layout>} />
-            <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
-            <Route path="/terms-and-conditions" element={<Layout><TermsAndConditions /></Layout>} />
-            <Route path="/support" element={<Layout><Support /></Layout>} />
             <Route path="/faq" element={<Layout><FAQ /></Layout>} />
+            <Route path="/support" element={<Layout><Support /></Layout>} />
             <Route path="/blog" element={<Layout><Blog /></Layout>} />
             <Route path="/signin" element={<AuthLayout><SignIn /></AuthLayout>} />
             <Route path="/signup" element={<AuthLayout><SignUp /></AuthLayout>} />
@@ -84,7 +75,6 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/add-venue" element={<AddVenue />} />
-            <Route path="/pricing-demo" element={<Layout><PricingDemo /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>

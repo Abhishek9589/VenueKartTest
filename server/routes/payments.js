@@ -6,15 +6,25 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = Router();
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Initialize Razorpay only if credentials are available
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 // Create Razorpay order for booking payment
 router.post('/create-order', authenticateToken, async (req, res) => {
   try {
+    // Check if Razorpay is configured
+    if (!razorpay) {
+      return res.status(503).json({
+        error: 'Payment gateway not configured. Please contact support.'
+      });
+    }
+
     const { bookingId } = req.body;
     const customerId = req.user.id;
 
@@ -79,11 +89,18 @@ router.post('/create-order', authenticateToken, async (req, res) => {
 // Verify Razorpay payment
 router.post('/verify-payment', authenticateToken, async (req, res) => {
   try {
-    const { 
-      razorpay_order_id, 
-      razorpay_payment_id, 
+    // Check if Razorpay is configured
+    if (!razorpay) {
+      return res.status(503).json({
+        error: 'Payment gateway not configured. Please contact support.'
+      });
+    }
+
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
       razorpay_signature,
-      booking_id 
+      booking_id
     } = req.body;
 
     const customerId = req.user.id;
