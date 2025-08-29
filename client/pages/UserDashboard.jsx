@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import apiClient from '../lib/apiClient';
+import RazorpayPayment from '../components/RazorpayPayment';
 import {
   User,
   Mail,
@@ -254,8 +255,29 @@ export default function UserDashboard() {
 
                             {/* Status-specific messages */}
                             {booking.status === 'confirmed' && (
-                              <div className="mt-2 text-sm text-green-700 bg-green-100 px-3 py-1 rounded-md">
-                                ✅ Your booking has been confirmed! The venue owner will contact you soon.
+                              <div className="mt-2 space-y-2">
+                                <div className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-md">
+                                  ✅ Your booking has been confirmed! {booking.payment_status === 'completed' ? 'Payment completed successfully.' : 'Please complete your payment to secure your booking.'}
+                                </div>
+                                <RazorpayPayment
+                                  booking={booking}
+                                  onPaymentSuccess={(paymentId) => {
+                                    toast({
+                                      title: "Payment Successful!",
+                                      description: `Payment completed. ID: ${paymentId}`,
+                                      variant: "default",
+                                    });
+                                    // Refresh booking data to show updated payment status
+                                    loadUserData();
+                                  }}
+                                  onPaymentFailure={(error) => {
+                                    toast({
+                                      title: "Payment Failed",
+                                      description: error || "Please try again or contact support.",
+                                      variant: "destructive",
+                                    });
+                                  }}
+                                />
                               </div>
                             )}
                             {booking.status === 'cancelled' && (

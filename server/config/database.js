@@ -16,6 +16,9 @@ const pool = mysql.createPool({
   }
 });
 
+// Import update function
+import { addPaymentColumns } from './updateBookingsTable.js';
+
 // Initialize database tables
 export async function initializeDatabase() {
   try {
@@ -101,6 +104,11 @@ export async function initializeDatabase() {
         guest_count INT NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending',
+        payment_status ENUM('not_required', 'pending', 'completed', 'failed') DEFAULT 'not_required',
+        razorpay_order_id VARCHAR(255),
+        razorpay_payment_id VARCHAR(255),
+        payment_completed_at TIMESTAMP NULL,
+        payment_error_description TEXT,
         special_requirements TEXT,
         booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -110,7 +118,9 @@ export async function initializeDatabase() {
         INDEX idx_venue (venue_id),
         INDEX idx_customer (customer_id),
         INDEX idx_event_date (event_date),
-        INDEX idx_status (status)
+        INDEX idx_status (status),
+        INDEX idx_payment_status (payment_status),
+        INDEX idx_razorpay_order (razorpay_order_id)
       )
     `);
 
@@ -153,6 +163,9 @@ export async function initializeDatabase() {
     `);
 
     console.log('Database tables verified/created successfully');
+
+    // Update existing bookings table with payment columns
+    await addPaymentColumns();
   } catch (error) {
     console.error('Error initializing database:', error);
   }

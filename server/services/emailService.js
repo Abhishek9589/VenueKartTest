@@ -15,6 +15,14 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendOTPEmail(email, otp, name = 'User', purpose = 'Verification') {
+  console.log('sendOTPEmail called with:', { email, purpose, name });
+  console.log('Email configuration:', {
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS ? '[SET]' : '[NOT SET]'
+  });
+
   const isPasswordReset = purpose === 'Password Reset';
   const isEmailUpdate = purpose === 'Email Update';
   const mailOptions = {
@@ -96,11 +104,18 @@ export async function sendOTPEmail(email, otp, name = 'User', purpose = 'Verific
   };
 
   try {
+    console.log('Attempting to send OTP email...');
     await transporter.sendMail(mailOptions);
     console.log(`OTP email sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error('Error sending OTP email:', error);
+    console.error('Error sending OTP email:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode
+    });
     return false;
   }
 }
@@ -836,6 +851,38 @@ export async function sendInquiryAcceptedToCustomer(customerEmail, inquiryData) 
               </div>
             </div>
 
+            <!-- Payment Instructions -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Next Steps - Complete Your Payment</h3>
+              <div style="background: #fef5e7; padding: 20px; border-radius: 6px; border-left: 4px solid #d69e2e; margin: 0 0 20px 0;">
+                <p style="color: #744210; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">
+                  🔔 Payment Required to Confirm Your Booking
+                </p>
+                <p style="color: #975a16; margin: 0 0 15px 0; font-size: 14px; line-height: 1.5;">
+                  To secure your booking, please complete the payment process within 48 hours. Follow these simple steps:
+                </p>
+                <ol style="color: #975a16; margin: 0; font-size: 14px; line-height: 1.6; padding-left: 20px;">
+                  <li style="margin: 0 0 8px 0;">Log in to your VenueKart dashboard</li>
+                  <li style="margin: 0 0 8px 0;">Navigate to your booking history</li>
+                  <li style="margin: 0 0 8px 0;">Click "Pay Now" for this booking</li>
+                  <li style="margin: 0 0 8px 0;">Complete the secure payment via Razorpay</li>
+                </ol>
+              </div>
+
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${process.env.CLIENT_URL || 'http://localhost:8080'}/user-dashboard"
+                   style="display: inline-block; background: #3C3B6E; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                  Complete Payment Now
+                </a>
+              </div>
+
+              <div style="background: #e6fffa; padding: 15px; border-radius: 6px; border-left: 4px solid #38b2ac;">
+                <p style="color: #234e52; margin: 0; font-size: 13px; line-height: 1.5;">
+                  <strong>💳 Secure Payment:</strong> All payments are processed securely through Razorpay with bank-level encryption.<br>
+                  <strong>📞 Support:</strong> Contact us if you need assistance with the payment process.
+                </p>
+              </div>
+            </div>
 
             <div style="text-align: center; margin: 30px 0;">
               <p style="color: #4a5568; margin: 0; font-size: 16px; line-height: 1.6;">

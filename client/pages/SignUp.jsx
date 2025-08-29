@@ -52,7 +52,7 @@ export default function SignUp() {
         return;
       }
 
-      await register(formData.email, formData.fullName, userType, formData.password);
+      await register(formData.email, formData.fullName, userType, formData.password, null);
 
       // Navigate to OTP verification
       navigate('/verify-otp', {

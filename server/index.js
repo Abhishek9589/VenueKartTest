@@ -9,6 +9,7 @@ import venuesRoutes from "./routes/venues.js";
 import bookingsRoutes from "./routes/bookings.js";
 import uploadRoutes from "./routes/upload.js";
 import favoritesRoutes from "./routes/favorites.js";
+import paymentsRoutes from "./routes/payments.js";
 import { initializeDatabase } from "./config/database.js";
 
 dotenv.config();
@@ -54,6 +55,7 @@ export function createServer() {
   app.use("/api/bookings", bookingsRoutes);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/favorites", favoritesRoutes);
+  app.use("/api/payments", paymentsRoutes);
 
   return app;
 }

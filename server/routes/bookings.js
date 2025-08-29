@@ -177,10 +177,15 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     const booking = bookings[0];
     const previousStatus = booking.status;
 
-    // Update booking status
+    // Update booking status and payment status
+    let paymentStatus = 'not_required';
+    if (status === 'confirmed') {
+      paymentStatus = 'pending'; // When confirmed, payment becomes required
+    }
+
     await pool.execute(
-      'UPDATE bookings SET status = ? WHERE id = ?',
-      [status, id]
+      'UPDATE bookings SET status = ?, payment_status = ? WHERE id = ?',
+      [status, paymentStatus, id]
     );
 
     // If confirmed, increment venue booking count

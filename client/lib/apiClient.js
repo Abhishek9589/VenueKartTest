@@ -62,19 +62,31 @@ class ApiClient {
         body: JSON.stringify({ refreshToken }),
       });
 
-      if (!response.ok) {
-        let errorData;
+      // Read response body once as text
+      let responseText = '';
+      try {
+        responseText = await response.text();
+      } catch (readError) {
+        console.error('Failed to read refresh response body:', readError);
+        throw new Error('Failed to refresh authentication token');
+      }
+
+      // Parse as JSON
+      let data = null;
+      if (responseText) {
         try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: 'Token refresh failed' };
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse refresh response as JSON:', parseError);
+          throw new Error('Invalid server response during token refresh');
         }
-        const originalError = errorData.error || 'Token refresh failed';
+      }
+
+      if (!response.ok) {
+        const originalError = data?.error || 'Token refresh failed';
         const userFriendlyMessage = getUserFriendlyError(originalError, 'general');
         throw new Error(userFriendlyMessage);
       }
-
-      const data = await response.json();
       this.setTokens(data.accessToken, refreshToken);
       return data.accessToken;
     } catch (error) {
@@ -196,32 +208,149 @@ class ApiClient {
     return this.call(url, { ...options, method: 'DELETE' });
   }
 
-  // Helper method for API calls that need JSON response
+  // Helper method for API calls that need JSON response - completely self-contained
   async callJson(url, options = {}) {
-    const response = await this.call(url, options);
+    const { accessToken } = this.getTokens();
 
-    if (!response.ok) {
-      let errorData;
-      let originalError;
+    // Prepare headers
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
 
-      try {
-        errorData = await response.json();
-        originalError = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
-      } catch {
-        originalError = `HTTP ${response.status}: ${response.statusText}`;
-      }
-
-      // Convert technical error to user-friendly message
-      const userFriendlyMessage = getUserFriendlyError(originalError, 'general');
-      throw new Error(userFriendlyMessage);
+    // Add authorization header if token exists
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
     }
 
-    return response.json();
+    try {
+      // Make the fetch request directly
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      // Read response body once as text immediately
+      let responseText = '';
+      try {
+        responseText = await response.text();
+      } catch (readError) {
+        console.error('Failed to read response body:', readError);
+        throw new Error('Failed to communicate with server. Please try again.');
+      }
+
+      // Try to parse response as JSON
+      let responseData = null;
+      if (responseText.trim()) {
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse response as JSON:', parseError);
+          console.error('Response text:', responseText);
+
+          // If it's an error response and we can't parse it, give a generic error
+          if (!response.ok) {
+            throw new Error(`Server error (${response.status}). Please try again.`);
+          }
+
+          // If it's a success response but not JSON, that's unexpected
+          throw new Error('Server returned an invalid response. Please try again.');
+        }
+      }
+
+      // Handle 401 unauthorized responses with token refresh
+      if (response.status === 401 && this.getTokens().refreshToken) {
+        try {
+          // Try to refresh token
+          await this.refreshToken();
+
+          // Retry the original request with new token
+          const newAccessToken = this.getTokens().accessToken;
+          const retryHeaders = {
+            ...headers,
+            Authorization: `Bearer ${newAccessToken}`,
+          };
+
+          const retryResponse = await fetch(url, {
+            ...options,
+            headers: retryHeaders,
+          });
+
+          const retryText = await retryResponse.text();
+          let retryData = null;
+
+          if (retryText.trim()) {
+            try {
+              retryData = JSON.parse(retryText);
+            } catch {
+              if (!retryResponse.ok) {
+                throw new Error(`Server error (${retryResponse.status}). Please try again.`);
+              }
+              throw new Error('Server returned an invalid response. Please try again.');
+            }
+          }
+
+          if (!retryResponse.ok) {
+            const retryError = retryData?.error || retryData?.message || `Server error (${retryResponse.status})`;
+            throw new Error(getUserFriendlyError(retryError, 'general'));
+          }
+
+          return retryData;
+
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          this.clearTokens();
+          if (window.location.pathname !== '/signin') {
+            window.location.href = '/signin?expired=true';
+          }
+          throw new Error('Your session has expired. Please sign in again.');
+        }
+      }
+
+      // Handle error responses
+      if (!response.ok) {
+        const originalError = responseData?.error || responseData?.message || `Server error (${response.status})`;
+        console.error('Server error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData,
+          originalError
+        });
+        throw new Error(getUserFriendlyError(originalError, 'general'));
+      }
+
+      console.log('Successful API response:', responseData);
+      // Return parsed JSON for successful responses
+      return responseData;
+
+    } catch (error) {
+      console.error('API callJson error details:', {
+        message: error.message,
+        stack: error.stack,
+        url,
+        options
+      });
+
+      // If it's already a user-friendly error, don't wrap it again
+      if (error.message && (
+        error.message.includes('Please') ||
+        error.message.includes('try again') ||
+        error.message.includes('session has expired')
+      )) {
+        throw error;
+      }
+
+      // Convert technical errors to user-friendly messages
+      throw new Error(getUserFriendlyError(error.message || 'Network error', 'general'));
+    }
   }
 
   // JSON convenience methods
   async getJson(url, options = {}) {
-    return this.callJson(url, { ...options, method: 'GET' });
+    return this.callJson(url, {
+      ...options,
+      method: 'GET'
+    });
   }
 
   async postJson(url, data, options = {}) {
@@ -241,7 +370,10 @@ class ApiClient {
   }
 
   async deleteJson(url, options = {}) {
-    return this.callJson(url, { ...options, method: 'DELETE' });
+    return this.callJson(url, {
+      ...options,
+      method: 'DELETE'
+    });
   }
 }
 

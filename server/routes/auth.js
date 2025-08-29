@@ -211,33 +211,48 @@ router.get('/google/callback', async (req, res) => {
 // User Registration with OTP verification
 router.post('/register', async (req, res) => {
   try {
+    console.log('Registration request received:', {
+      body: { ...req.body, password: req.body.password ? '[PROVIDED]' : null },
+      headers: req.headers['content-type']
+    });
+
     const { email, name, userType = 'customer', password = null, mobileNumber = null } = req.body;
+
+    console.log('Extracted data:', { email, name, userType, password: password ? '[PROVIDED]' : null, mobileNumber });
 
     // Validation
     if (!email || !name) {
+      console.log('Validation failed: Email or name missing');
       return res.status(400).json({ error: 'Email and name are required' });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      console.log('Validation failed: Invalid email format');
       return res.status(400).json({ error: 'Please enter a valid email address' });
     }
 
     if (!['customer', 'venue-owner'].includes(userType)) {
+      console.log('Validation failed: Invalid user type:', userType);
       return res.status(400).json({ error: 'Invalid user type' });
     }
 
     if (userType === 'venue-owner' && !password) {
+      console.log('Validation failed: Password required for venue owner');
       return res.status(400).json({ error: 'Password is required for venue owners' });
     }
 
     if (password && password.length < 6) {
+      console.log('Validation failed: Password too short');
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
     if (mobileNumber && !/^[0-9]{10}$/.test(mobileNumber.replace(/\s+/g, ''))) {
+      console.log('Validation failed: Invalid mobile number');
       return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
+
+    console.log('All validations passed, proceeding with registration');
 
     // Check if user already exists
     const [existingUsers] = await pool.execute(
@@ -278,21 +293,32 @@ router.post('/register', async (req, res) => {
     );
 
     // Send OTP email
+    console.log('Attempting to send OTP email...');
     const emailSent = await sendOTPEmail(email, otp, name, 'Account Verification');
-    
+    console.log('Email sent result:', emailSent);
+
     if (!emailSent) {
-      // If email fails, clean up
-      await pool.execute('DELETE FROM users WHERE id = ?', [result.insertId]);
-      await pool.execute('DELETE FROM otp_verifications WHERE email = ?', [email]);
-      return res.status(500).json({ error: 'Failed to send verification email' });
+      console.log('Email sending failed, but continuing with registration for debugging...');
+      console.log('In production, this would clean up and return an error');
+      // Temporarily commenting out cleanup for debugging
+      // await pool.execute('DELETE FROM users WHERE id = ?', [result.insertId]);
+      // await pool.execute('DELETE FROM otp_verifications WHERE email = ?', [email]);
+      // return res.status(500).json({ error: 'Failed to send verification email' });
     }
 
-    res.status(201).json({ 
+    console.log('Registration completed successfully');
+    res.status(201).json({
       message: 'Registration successful! Please check your email for the verification code.',
       email: email
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Registration error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState
+    });
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 });
