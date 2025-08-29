@@ -50,16 +50,16 @@ export default function Footer() {
               Your trusted partner for finding the perfect venue for every occasion. Making event planning effortless with verified venues and transparent pricing.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+              <a href="https://www.facebook.com/share/164c2G28M2/?mibextid=wwXIfr" className="text-gray-300 hover:text-venue-purple transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
               <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+              <a href="https://www.instagram.com/venuekart?igsh=ZDA0bmRxZnAyaXJ6" className="text-gray-300 hover:text-venue-purple transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-venue-purple transition-colors">
+              <a href="https://www.linkedin.com/company/venuekart-in/" className="text-gray-300 hover:text-venue-purple transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
             </div>
