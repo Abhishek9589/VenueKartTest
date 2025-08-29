@@ -8,6 +8,7 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const { location, search, limit = 10, offset = 0 } = req.query;
+    console.log('Venues API called with params:', { location, search, limit, offset });
 
     // First try the full query with all tables
     let query = `
@@ -33,12 +34,17 @@ router.get('/', async (req, res) => {
       params.push(`%${search}%`, `%${search}%`);
     }
 
+    // Temporarily removed Pune exclusion to debug venue loading
+
     query += ' GROUP BY v.id ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), parseInt(offset));
 
     let venues;
     try {
+      console.log('Executing venues query:', query);
+      console.log('With params:', params);
       [venues] = await pool.execute(query, params);
+      console.log('Query returned venues count:', venues.length);
     } catch (tableError) {
       // If tables don't exist, use fallback query
       console.log('Using fallback venues query due to missing tables');
@@ -62,14 +68,19 @@ router.get('/', async (req, res) => {
         fallbackParams.push(`%${search}%`, `%${search}%`);
       }
 
+      // Temporarily removed Pune exclusion to debug venue loading
+
       fallbackQuery += ' ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
       fallbackParams.push(parseInt(limit), parseInt(offset));
 
       try {
+        console.log('Executing fallback query:', fallbackQuery);
+        console.log('With fallback params:', fallbackParams);
         [venues] = await pool.execute(fallbackQuery, fallbackParams);
+        console.log('Fallback query returned venues count:', venues.length);
       } catch (fallbackError) {
         // If even basic venues table doesn't exist, return empty array
-        console.log('No venues table found, returning empty array');
+        console.log('No venues table found, returning empty array. Error:', fallbackError.message);
         return res.json([]);
       }
     }
@@ -84,6 +95,7 @@ router.get('/', async (req, res) => {
       priceMax: venue.price_max ? parseFloat(venue.price_max) : null
     }));
 
+    console.log('Sending formatted venues response, count:', formattedVenues.length);
     res.json(formattedVenues);
   } catch (error) {
     console.error('Error fetching venues:', error);

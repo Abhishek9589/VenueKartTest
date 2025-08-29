@@ -28,6 +28,11 @@ import AddVenue from "./pages/AddVenue";
 import FAQ from "./pages/FAQ";
 import Support from "./pages/Support";
 import Blog from "./pages/Blog";
+import Careers from "./pages/Careers";
+import WhyVenueKart from "./pages/WhyVenueKart";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import AccountSettings from "./pages/AccountSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +72,11 @@ const App = () => (
             <Route path="/faq" element={<Layout><FAQ /></Layout>} />
             <Route path="/support" element={<Layout><Support /></Layout>} />
             <Route path="/blog" element={<Layout><Blog /></Layout>} />
+            <Route path="/careers" element={<Layout><Careers /></Layout>} />
+            <Route path="/why-venuekart" element={<Layout><WhyVenueKart /></Layout>} />
+            <Route path="/terms-and-conditions" element={<Layout><TermsAndConditions /></Layout>} />
+            <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
+            <Route path="/account-settings" element={<Layout><AccountSettings /></Layout>} />
             <Route path="/signin" element={<AuthLayout><SignIn /></AuthLayout>} />
             <Route path="/signup" element={<AuthLayout><SignUp /></AuthLayout>} />
             <Route path="/verify-otp" element={<AuthLayout><VerifyOTP /></AuthLayout>} />

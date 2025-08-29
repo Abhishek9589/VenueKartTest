@@ -131,8 +131,37 @@ export default function Index() {
       setPopularVenues(formattedVenues);
     } catch (error) {
       console.error('Error loading popular venues:', error);
-      // Fallback to default venues if API fails
-      setPopularVenues([]);
+      // Fallback to demo venues if API fails
+      const fallbackVenues = [
+        {
+          id: 1,
+          name: "Elegant Banquet Hall",
+          location: "Kharadi",
+          capacity: "Up to 300 guests",
+          price: "₹45,000",
+          image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop",
+          facilities: ["Air Conditioning", "Parking", "Catering"]
+        },
+        {
+          id: 2,
+          name: "Garden Paradise Resort",
+          location: "Wagholi",
+          capacity: "Up to 500 guests",
+          price: "₹65,000",
+          image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop",
+          facilities: ["Garden Area", "Swimming Pool", "Catering"]
+        },
+        {
+          id: 3,
+          name: "Royal Conference Center",
+          location: "Hinjewadi",
+          capacity: "Up to 200 guests",
+          price: "₹35,000",
+          image: "https://images.unsplash.com/photo-1540518614846-7eded47ee3b7?w=400&h=300&fit=crop",
+          facilities: ["AV Equipment", "WiFi", "Air Conditioning"]
+        }
+      ];
+      setPopularVenues(fallbackVenues);
     } finally {
       setLoading(false);
     }
