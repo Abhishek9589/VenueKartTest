@@ -331,8 +331,11 @@ export default function UserDashboard() {
                                     <p className="text-sm text-gray-600">{selectedBooking.guest_count}</p>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">Amount</Label>
-                                    <p className="text-sm text-gray-600">₹{selectedBooking.amount}</p>
+                                    <Label className="text-sm font-medium">Amount to Pay</Label>
+                                    <p className="text-sm text-gray-600">₹{selectedBooking.payment_amount || selectedBooking.amount}</p>
+                                    {selectedBooking.payment_amount && selectedBooking.amount !== selectedBooking.payment_amount && (
+                                      <p className="text-xs text-gray-500 mt-1">Display price: ₹{selectedBooking.amount}</p>
+                                    )}
                                   </div>
                                   <div>
                                     <Label className="text-sm font-medium">Status</Label>

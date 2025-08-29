@@ -25,24 +25,34 @@ const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
   const initatePayment = async () => {
     try {
       setLoading(true);
-      
+      console.log('Payment initiation started for booking:', booking.id);
+
       // Load Razorpay script
+      console.log('Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay script');
       }
 
       // Create Razorpay order
+      console.log('Creating Razorpay order for booking ID:', booking.id);
       const orderResponse = await apiClient.callJson('/api/payments/create-order', {
         method: 'POST',
         body: JSON.stringify({ bookingId: booking.id })
       });
 
+      console.log('Order creation response:', orderResponse);
+
       if (!orderResponse.success) {
+        console.error('Payment order creation failed:', orderResponse);
+        if (orderResponse.error?.includes('Payment gateway not configured')) {
+          throw new Error('Payment gateway is currently not available. Please contact support.');
+        }
         throw new Error(orderResponse.error || 'Failed to create payment order');
       }
 
       const { order, key_id } = orderResponse;
+      console.log('Payment order created successfully:', order);
 
       // Razorpay options
       const options = {
@@ -149,7 +159,14 @@ const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
         }
       };
 
+      // Check if Razorpay is available
+      if (!window.Razorpay) {
+        throw new Error('Razorpay payment gateway failed to load. Please refresh the page and try again.');
+      }
+
+      console.log('Creating Razorpay checkout with options:', options);
       const rzp = new window.Razorpay(options);
+      console.log('Opening Razorpay payment gateway...');
       rzp.open();
 
     } catch (error) {
@@ -274,9 +291,14 @@ const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
               
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>Total Amount:</span>
-                  <span className="text-venue-purple">₹{booking.amount}</span>
+                  <span>Amount to Pay:</span>
+                  <span className="text-venue-purple">₹{booking.payment_amount || booking.amount}</span>
                 </div>
+                {booking.payment_amount && booking.amount !== booking.payment_amount && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    Display price: ₹{booking.amount} (includes taxes & fees)
+                  </div>
+                )}
               </div>
 
               <div className="bg-gray-50 p-3 rounded-md">
@@ -315,7 +337,7 @@ const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
                   ) : (
                     <>
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Pay ₹{booking.amount}
+                      Pay ₹{booking.payment_amount || booking.amount}
                     </>
                   )}
                 </Button>

@@ -47,12 +47,33 @@ export async function addPaymentColumns() {
 
     // Add payment_error_description column
     await pool.execute(`
-      ALTER TABLE bookings 
+      ALTER TABLE bookings
       ADD COLUMN IF NOT EXISTS payment_error_description TEXT
     `).catch(err => {
       if (!err.message.includes('Duplicate column name')) {
         throw err;
       }
+    });
+
+    // Add payment_amount column (actual amount customer pays)
+    await pool.execute(`
+      ALTER TABLE bookings
+      ADD COLUMN IF NOT EXISTS payment_amount DECIMAL(10,2) DEFAULT NULL
+    `).catch(err => {
+      if (!err.message.includes('Duplicate column name')) {
+        throw err;
+      }
+    });
+
+    // For existing records without payment_amount, calculate it from venue base price
+    // This will be updated properly when bookings are created with the new logic
+    await pool.execute(`
+      UPDATE bookings b
+      JOIN venues v ON b.venue_id = v.id
+      SET b.payment_amount = v.price_per_day
+      WHERE b.payment_amount IS NULL
+    `).catch(err => {
+      console.log('Note: Could not update existing payment_amount values:', err.message);
     });
 
     // Add indexes if they don't exist

@@ -38,12 +38,13 @@ router.get('/owner', authenticateToken, async (req, res) => {
     params.push(parseInt(limit), parseInt(offset));
     
     const [bookings] = await pool.execute(query, params);
-    
+
     const formattedBookings = bookings.map(booking => ({
       ...booking,
-      amount: parseFloat(booking.amount)
+      amount: parseFloat(booking.amount),
+      payment_amount: parseFloat(booking.payment_amount || booking.amount)
     }));
-    
+
     res.json(formattedBookings);
   } catch (error) {
     console.error('Error fetching owner bookings:', error);
@@ -67,12 +68,13 @@ router.get('/customer', authenticateToken, async (req, res) => {
       ORDER BY b.created_at DESC
       LIMIT ? OFFSET ?
     `, [customerId, parseInt(limit), parseInt(offset)]);
-    
+
     const formattedBookings = bookings.map(booking => ({
       ...booking,
-      amount: parseFloat(booking.amount)
+      amount: parseFloat(booking.amount),
+      payment_amount: parseFloat(booking.payment_amount || booking.amount)
     }));
-    
+
     res.json(formattedBookings);
   } catch (error) {
     console.error('Error fetching customer bookings:', error);
@@ -130,15 +132,19 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Venue is not available on this date' });
     }
     
+    // Calculate payment amount (base price + 18% GST) - customer pays base price including GST
+    const GST_RATE = 0.18; // 18%
+    const payment_amount = Math.round(venue.price_per_day * (1 + GST_RATE));
+
     // Create booking
     const [result] = await pool.execute(`
       INSERT INTO bookings (
         venue_id, customer_id, customer_name, customer_email, customer_phone,
-        event_date, event_type, guest_count, amount, special_requirements
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        event_date, event_type, guest_count, amount, payment_amount, special_requirements
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       venueId, customerId, customerName, customerEmail, customerPhone,
-      eventDate, eventType, guestCount, amount, specialRequirements
+      eventDate, eventType, guestCount, amount, payment_amount, specialRequirements
     ]);
     
     res.status(201).json({ 
@@ -318,7 +324,8 @@ router.get('/owner/recent', authenticateToken, async (req, res) => {
 
     const formattedBookings = bookings.map(booking => ({
       ...booking,
-      amount: parseFloat(booking.amount)
+      amount: parseFloat(booking.amount),
+      payment_amount: parseFloat(booking.payment_amount || booking.amount)
     }));
 
     res.json(formattedBookings);
@@ -368,7 +375,8 @@ router.get('/owner/inquiries', authenticateToken, async (req, res) => {
 
     const formattedInquiries = inquiries.map(inquiry => ({
       ...inquiry,
-      amount: parseFloat(inquiry.amount)
+      amount: parseFloat(inquiry.amount),
+      payment_amount: parseFloat(inquiry.payment_amount || inquiry.amount)
     }));
 
     res.json(formattedInquiries);
@@ -414,18 +422,23 @@ router.post('/inquiry', authenticateToken, async (req, res) => {
     const venue = venues[0];
 
     // Create booking record (which serves as an inquiry until accepted/rejected)
-    // Calculate estimated amount based on venue price
+    // Calculate estimated amount based on venue price (for display)
     const estimatedAmount = venue.price_per_day || venue.price_min || 50000; // Default fallback
+
+    // Payment amount includes base price + 18% GST (what customer actually pays)
+    const GST_RATE = 0.18; // 18%
+    const basePrice = venue.price_per_day || venue.price_min || 50000;
+    const payment_amount = Math.round(basePrice * (1 + GST_RATE));
 
     try {
       const [bookingResult] = await pool.execute(`
         INSERT INTO bookings (
           venue_id, customer_id, customer_name, customer_email, customer_phone,
-          event_date, event_type, guest_count, amount, special_requirements, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+          event_date, event_type, guest_count, amount, payment_amount, special_requirements, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `, [
         venue_id, customerId, fullName, email, phone,
-        event_date, eventType, guestCount, estimatedAmount, user_details.specialRequests || null
+        event_date, eventType, guestCount, estimatedAmount, payment_amount, user_details.specialRequests || null
       ]);
 
       console.log('Booking/inquiry record created with ID:', bookingResult.insertId);

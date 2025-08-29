@@ -47,16 +47,19 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Payment order already exists for this booking' });
     }
 
-    // Create Razorpay order
+    // Create Razorpay order using payment_amount (base price) instead of total amount
+    const paymentAmount = booking.payment_amount || booking.amount; // Fallback to amount if payment_amount not set
     const orderOptions = {
-      amount: Math.round(booking.amount * 100), // Convert to paisa
+      amount: Math.round(paymentAmount * 100), // Convert to paisa
       currency: 'INR',
       receipt: `booking_${bookingId}_${Date.now()}`,
       notes: {
         booking_id: bookingId,
         venue_name: booking.venue_name,
         customer_id: customerId,
-        event_date: booking.event_date
+        event_date: booking.event_date,
+        display_amount: booking.amount, // Keep track of display amount
+        payment_amount: paymentAmount // Actual payment amount
       }
     };
 
