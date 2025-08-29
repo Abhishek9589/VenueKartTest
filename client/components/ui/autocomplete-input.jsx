@@ -164,6 +164,11 @@ export function AutocompleteInput({
                   "hover:bg-gray-50 active:bg-gray-100",
                   highlightedIndex === index && "bg-gray-50 text-venue-indigo"
                 )}
+                onPointerDown={(e) => {
+                  // Prevent input blur before selection on mouse/touch
+                  e.preventDefault();
+                  handleSuggestionClick(option);
+                }}
                 onClick={() => handleSuggestionClick(option)}
                 onMouseEnter={() => setHighlightedIndex(index)}
               >
