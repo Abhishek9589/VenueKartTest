@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
+import venueService from '../services/venueService';
 import { getUserFriendlyError } from '../lib/errorMessages';
 import { getPricingInfo } from '../lib/priceUtils';
 import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
@@ -24,34 +25,23 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-// API service functions
-const apiCall = async (url, options = {}) => {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  });
-
-  if (!response.ok) {
-    const userFriendlyMessage = getUserFriendlyError(`API call failed: ${response.statusText}`, 'general');
-    throw new Error(userFriendlyMessage);
-  }
-
-  return response.json();
-};
-
 export default function Venues() {
   const [searchParams] = useSearchParams();
   const [venues, setVenues] = useState([]);
-  const [filteredVenues, setFilteredVenues] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [venueTypes, setVenueTypes] = useState(VENUE_TYPES);
-  const [locations, setLocations] = useState(PUNE_AREAS);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
+  const [venueTypes, setVenueTypes] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [venuesPerPage] = useState(20);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalCount: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const { toggleFavorite, isFavorite } = useFavorites();
   const { isLoggedIn } = useAuth();
 
@@ -66,15 +56,22 @@ export default function Venues() {
   // Filter states
   const [selectedType, setSelectedType] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [priceRange, setPriceRange] = useState([0, 100000]);
-  const [capacityRange, setCapacityRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 500000]); // Increased to ₹5 lakh
+  const [capacityRange, setCapacityRange] = useState([0, 5000]); // Increased to 5000 guests
+  const [maxPrice, setMaxPrice] = useState(500000);
+  const [maxCapacity, setMaxCapacity] = useState(5000);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  // Load venues from API
+  // Load filter options on component mount
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
+
+  // Load venues from API when page or filters change
   useEffect(() => {
     loadVenues();
-  }, []);
+  }, [currentPage, selectedType, selectedLocation, searchQuery]);
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -100,13 +97,54 @@ export default function Venues() {
     }
   }, [searchParams]);
 
+  const loadFilterOptions = async () => {
+    try {
+      setFilterOptionsLoading(true);
+      const options = await venueService.getFilterOptions();
+
+      setVenueTypes(options.venueTypes || []);
+      setLocations(options.locations || []);
+
+      // Update price and capacity ranges to match actual data
+      if (options.priceRange) {
+        const roundedMaxPrice = Math.ceil(options.priceRange.max / 10000) * 10000;
+        setMaxPrice(roundedMaxPrice);
+        setPriceRange([0, roundedMaxPrice]);
+      }
+
+      if (options.capacityRange) {
+        const roundedMaxCapacity = Math.ceil(options.capacityRange.max / 100) * 100;
+        setMaxCapacity(roundedMaxCapacity);
+        setCapacityRange([0, roundedMaxCapacity]);
+      }
+
+      console.log('Loaded filter options:', options);
+    } catch (error) {
+      console.error('Error loading filter options:', error);
+      // Fallback to default options
+      setVenueTypes(VENUE_TYPES);
+      setLocations(PUNE_AREAS);
+    } finally {
+      setFilterOptionsLoading(false);
+    }
+  };
+
   const loadVenues = async () => {
     try {
       setLoading(true);
-      const data = await apiCall('/api/venues?limit=50');
+
+      const filters = {
+        page: currentPage,
+        limit: venuesPerPage,
+        location: selectedLocation || undefined,
+        type: selectedType || undefined,
+        search: searchQuery || undefined
+      };
+
+      const response = await venueService.getVenues(filters);
 
       // Format API venues data
-      const apiVenues = data.map(venue => ({
+      const apiVenues = response.venues.map(venue => ({
         id: venue.id,
         name: venue.name,
         location: venue.location,
@@ -120,20 +158,7 @@ export default function Venues() {
       }));
 
       setVenues(apiVenues);
-
-      // Set price and capacity ranges based on actual data
-      const prices = apiVenues.map(v => v.price);
-      const capacities = apiVenues.map(v => v.capacity);
-
-      if (prices.length > 0) {
-        const maxPrice = Math.max(...prices);
-        setPriceRange([0, Math.ceil(maxPrice / 1000) * 1000]);
-      }
-
-      if (capacities.length > 0) {
-        const maxCapacity = Math.max(...capacities);
-        setCapacityRange([0, Math.ceil(maxCapacity / 100) * 100]);
-      }
+      setPagination(response.pagination);
 
     } catch (error) {
       console.error('Error loading venues:', error);
@@ -180,52 +205,45 @@ export default function Venues() {
         }
       ];
       setVenues(fallbackVenues);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: fallbackVenues.length,
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Apply filters
-  useEffect(() => {
+  // Apply client-side filters (for favorites and price/capacity ranges)
+  const getFilteredVenues = () => {
     let filtered = venues;
 
-    // Temporarily removed Pune exclusion to debug venue loading
-
-    // Show favorites only filter
+    // Show favorites only filter (client-side)
     if (showFavoritesOnly) {
       filtered = filtered.filter(venue => isFavorite(venue.id));
     }
 
-    if (selectedType && selectedType.trim() !== "") {
-      filtered = filtered.filter(venue => venue.type === selectedType);
-    }
-
-    if (selectedLocation && selectedLocation.trim() !== "") {
-      filtered = filtered.filter(venue => venue.location === selectedLocation);
-    }
-
-    if (searchQuery) {
-      filtered = filtered.filter(venue =>
-        venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        venue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        venue.type.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
+    // Price and capacity filters (client-side for now)
     filtered = filtered.filter(venue =>
       venue.price >= priceRange[0] && venue.price <= priceRange[1] &&
       venue.capacity >= capacityRange[0] && venue.capacity <= capacityRange[1]
     );
 
-    setFilteredVenues(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [selectedType, selectedLocation, searchQuery, priceRange, capacityRange, showFavoritesOnly, isFavorite]);
+    return filtered;
+  };
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredVenues.length / venuesPerPage);
-  const startIndex = (currentPage - 1) * venuesPerPage;
-  const endIndex = startIndex + venuesPerPage;
-  const currentVenues = filteredVenues.slice(startIndex, endIndex);
+  const filteredVenues = getFilteredVenues();
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [selectedType, selectedLocation, searchQuery]);
+
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -235,11 +253,11 @@ export default function Venues() {
   const clearFilters = () => {
     setSelectedType("");
     setSelectedLocation("");
-    setPriceRange([0, 100000]);
-    setCapacityRange([0, 1000]);
     setSearchQuery("");
     setShowFavoritesOnly(false);
     setCurrentPage(1);
+    // Reload filter options to reset ranges
+    loadFilterOptions();
   };
 
   return (
@@ -251,7 +269,7 @@ export default function Venues() {
             Find Your Perfect Venue
           </h1>
           <p className="text-gray-600 mb-6">
-            {loading ? 'Loading venues...' : `Discover ${filteredVenues.length} amazing venues for your special occasions`}
+            {loading ? 'Loading venues...' : `Discover ${pagination.totalCount} amazing venues for your special occasions`}
           </p>
 
           {/* Mobile Filter Toggle */}
@@ -305,10 +323,11 @@ export default function Venues() {
               <div className="space-y-2 mb-6">
                 <label className="text-sm font-medium text-gray-700">Venue Type</label>
                 <AutocompleteInput
-                  options={venueTypes}
+                  options={filterOptionsLoading ? ['Loading...'] : venueTypes}
                   value={selectedType}
                   onChange={setSelectedType}
-                  placeholder="Type to search..."
+                  placeholder={filterOptionsLoading ? "Loading..." : "Select venue type..."}
+                  disabled={filterOptionsLoading}
                   className="w-full"
                 />
               </div>
@@ -317,10 +336,11 @@ export default function Venues() {
               <div className="space-y-2 mb-6">
                 <label className="text-sm font-medium text-gray-700">Location</label>
                 <AutocompleteInput
-                  options={locations}
+                  options={filterOptionsLoading ? ['Loading...'] : locations}
                   value={selectedLocation}
                   onChange={setSelectedLocation}
-                  placeholder="Type to search..."
+                  placeholder={filterOptionsLoading ? "Loading..." : "Select location..."}
+                  disabled={filterOptionsLoading}
                   className="w-full"
                 />
               </div>
@@ -333,9 +353,10 @@ export default function Venues() {
                 <Slider
                   value={priceRange}
                   onValueChange={setPriceRange}
-                  max={100000}
-                  step={5000}
+                  max={maxPrice}
+                  step={10000}
                   className="w-full"
+                  disabled={filterOptionsLoading}
                 />
               </div>
 
@@ -347,9 +368,10 @@ export default function Venues() {
                 <Slider
                   value={capacityRange}
                   onValueChange={setCapacityRange}
-                  max={1000}
-                  step={50}
+                  max={maxCapacity}
+                  step={100}
                   className="w-full"
+                  disabled={filterOptionsLoading}
                 />
               </div>
 
@@ -401,18 +423,19 @@ export default function Venues() {
                 {/* Results Summary */}
                 <div className="flex justify-between items-center mb-6">
                   <p className="text-gray-600">
-                    Showing {startIndex + 1}-{Math.min(endIndex, filteredVenues.length)} of {filteredVenues.length} venues
+                    Showing {filteredVenues.length} of {pagination.totalCount} venues
+                    {showFavoritesOnly || selectedType || selectedLocation || searchQuery || (priceRange[0] > 0) || (capacityRange[0] > 0) ? ' (filtered)' : ''}
                   </p>
-                  {totalPages > 1 && (
+                  {pagination.totalPages > 1 && (
                     <div className="text-sm text-gray-600">
-                      Page {currentPage} of {totalPages}
+                      Page {pagination.currentPage} of {pagination.totalPages}
                     </div>
                   )}
                 </div>
 
                 {/* Venue Grid - Max 4 cards per row with wider cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr mb-8">
-                  {currentVenues.map((venue) => (
+                  {filteredVenues.map((venue) => (
                     <Card key={venue.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col h-full w-full">
                       <div className="relative h-56 overflow-hidden">
                         <img
@@ -485,13 +508,13 @@ export default function Venues() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
+                {pagination.totalPages > 1 && (
                   <div className="flex justify-center items-center space-x-2 mt-8">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(pagination.currentPage - 1)}
+                      disabled={!pagination.hasPrevPage}
                       className="flex items-center"
                     >
                       <ChevronLeft className="h-4 w-4 mr-1" />
@@ -499,25 +522,25 @@ export default function Venues() {
                     </Button>
 
                     <div className="flex space-x-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                         let pageNumber;
-                        if (totalPages <= 5) {
+                        if (pagination.totalPages <= 5) {
                           pageNumber = i + 1;
-                        } else if (currentPage <= 3) {
+                        } else if (pagination.currentPage <= 3) {
                           pageNumber = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNumber = totalPages - 4 + i;
+                        } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                          pageNumber = pagination.totalPages - 4 + i;
                         } else {
-                          pageNumber = currentPage - 2 + i;
+                          pageNumber = pagination.currentPage - 2 + i;
                         }
 
                         return (
                           <Button
                             key={pageNumber}
-                            variant={currentPage === pageNumber ? "default" : "outline"}
+                            variant={pagination.currentPage === pageNumber ? "default" : "outline"}
                             size="sm"
                             onClick={() => handlePageChange(pageNumber)}
-                            className={currentPage === pageNumber ? "bg-venue-indigo text-white" : ""}
+                            className={pagination.currentPage === pageNumber ? "bg-venue-indigo text-white" : ""}
                           >
                             {pageNumber}
                           </Button>
@@ -528,8 +551,8 @@ export default function Venues() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(pagination.currentPage + 1)}
+                      disabled={!pagination.hasNextPage}
                       className="flex items-center"
                     >
                       Next

@@ -16,8 +16,9 @@ const pool = mysql.createPool({
   }
 });
 
-// Import update function
+// Import update functions
 import { addPaymentColumns } from './updateBookingsTable.js';
+import { addVenueTypeColumn } from './updateVenuesTable.js';
 
 // Initialize database tables
 export async function initializeDatabase() {
@@ -166,6 +167,9 @@ export async function initializeDatabase() {
 
     // Update existing bookings table with payment columns
     await addPaymentColumns();
+
+    // Add venue type column to venues table
+    await addVenueTypeColumn();
   } catch (error) {
     console.error('Error initializing database:', error);
   }

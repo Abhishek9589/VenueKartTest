@@ -4,84 +4,191 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = Router();
 
+// Get filter options based on uploaded venue data (public)
+router.get('/filter-options', async (req, res) => {
+  try {
+    console.log('Fetching filter options from uploaded venues...');
+
+    // Get unique venue types
+    const [venueTypes] = await pool.execute(`
+      SELECT DISTINCT type
+      FROM venues
+      WHERE status = 'active' AND type IS NOT NULL AND type != ''
+      ORDER BY type
+    `);
+
+    // Get unique locations (case-insensitive)
+    const [locations] = await pool.execute(`
+      SELECT DISTINCT location
+      FROM venues
+      WHERE status = 'active' AND location IS NOT NULL AND location != ''
+      ORDER BY location
+    `);
+
+    // Get price range
+    const [priceRange] = await pool.execute(`
+      SELECT
+        MIN(COALESCE(price_min, price_per_day)) as min_price,
+        MAX(COALESCE(price_max, price_per_day)) as max_price
+      FROM venues
+      WHERE status = 'active'
+    `);
+
+    // Get capacity range
+    const [capacityRange] = await pool.execute(`
+      SELECT
+        MIN(capacity) as min_capacity,
+        MAX(capacity) as max_capacity
+      FROM venues
+      WHERE status = 'active'
+    `);
+
+    const filterOptions = {
+      venueTypes: venueTypes.map(row => row.type).filter(type => type && type.trim()),
+      locations: locations.map(row => row.location).filter(location => location && location.trim()),
+      priceRange: {
+        min: priceRange[0]?.min_price || 0,
+        max: priceRange[0]?.max_price || 500000
+      },
+      capacityRange: {
+        min: capacityRange[0]?.min_capacity || 0,
+        max: capacityRange[0]?.max_capacity || 5000
+      }
+    };
+
+    console.log('Filter options:', filterOptions);
+    res.json(filterOptions);
+  } catch (error) {
+    console.error('Error fetching filter options:', error);
+    res.status(500).json({ error: 'Failed to fetch filter options' });
+  }
+});
+
 // Get all venues (public)
 router.get('/', async (req, res) => {
   try {
-    const { location, search, limit = 10, offset = 0 } = req.query;
-    console.log('Venues API called with params:', { location, search, limit, offset });
+    const { location, search, type, limit = 20, offset = 0, page = 1 } = req.query;
+    const limitInt = parseInt(limit);
+    const offsetInt = page ? (parseInt(page) - 1) * limitInt : parseInt(offset);
 
-    // First try the full query with all tables
-    let query = `
-      SELECT v.*, u.name as owner_name, u.mobile_number as owner_phone,
-             GROUP_CONCAT(DISTINCT vi.image_url) as images,
-             GROUP_CONCAT(DISTINCT vf.facility_name) as facilities
-      FROM venues v
-      LEFT JOIN users u ON v.owner_id = u.id
-      LEFT JOIN venue_images vi ON v.id = vi.venue_id
-      LEFT JOIN venue_facilities vf ON v.id = vf.venue_id
-      WHERE v.status = 'active'
-    `;
+    console.log('Venues API called with params:', { location, search, type, limit: limitInt, offset: offsetInt, page });
 
+    // Build the WHERE clause conditions for both count and data queries
+    let whereConditions = 'v.status = \'active\'';
     const params = [];
+    const countParams = [];
 
-    if (location) {
-      query += ' AND v.location LIKE ?';
+    // Case-insensitive location filtering
+    if (location && location.trim() !== '') {
+      whereConditions += ' AND LOWER(v.location) LIKE LOWER(?)';
       params.push(`%${location}%`);
+      countParams.push(`%${location}%`);
     }
 
-    if (search) {
-      query += ' AND (v.name LIKE ? OR v.description LIKE ?)';
+    // Case-insensitive venue type filtering
+    if (type && type.trim() !== '') {
+      whereConditions += ' AND LOWER(v.type) LIKE LOWER(?)';
+      params.push(`%${type}%`);
+      countParams.push(`%${type}%`);
+    }
+
+    // General search in name and description
+    if (search && search.trim() !== '') {
+      whereConditions += ' AND (LOWER(v.name) LIKE LOWER(?) OR LOWER(v.description) LIKE LOWER(?))';
       params.push(`%${search}%`, `%${search}%`);
+      countParams.push(`%${search}%`, `%${search}%`);
     }
 
-    // Temporarily removed Pune exclusion to debug venue loading
+    let totalCount = 0;
+    let venues = [];
 
-    query += ' GROUP BY v.id ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
-
-    let venues;
     try {
-      console.log('Executing venues query:', query);
-      console.log('With params:', params);
-      [venues] = await pool.execute(query, params);
+      // First get the total count for pagination
+      const countQuery = `
+        SELECT COUNT(DISTINCT v.id) as total
+        FROM venues v
+        LEFT JOIN users u ON v.owner_id = u.id
+        WHERE ${whereConditions}
+      `;
+
+      console.log('Executing count query:', countQuery);
+      console.log('With count params:', countParams);
+      const [countResult] = await pool.execute(countQuery, countParams);
+      totalCount = countResult[0].total;
+      console.log('Total venues count:', totalCount);
+
+      // Then get the paginated venues data
+      const dataQuery = `
+        SELECT v.*, u.name as owner_name, u.mobile_number as owner_phone,
+               GROUP_CONCAT(DISTINCT vi.image_url) as images,
+               GROUP_CONCAT(DISTINCT vf.facility_name) as facilities
+        FROM venues v
+        LEFT JOIN users u ON v.owner_id = u.id
+        LEFT JOIN venue_images vi ON v.id = vi.venue_id
+        LEFT JOIN venue_facilities vf ON v.id = vf.venue_id
+        WHERE ${whereConditions}
+        GROUP BY v.id
+        ORDER BY v.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+
+      const dataParams = [...params, limitInt, offsetInt];
+      console.log('Executing data query:', dataQuery);
+      console.log('With data params:', dataParams);
+      [venues] = await pool.execute(dataQuery, dataParams);
       console.log('Query returned venues count:', venues.length);
+
     } catch (tableError) {
-      // If tables don't exist, use fallback query
       console.log('Using fallback venues query due to missing tables');
 
-      let fallbackQuery = `
+      // Fallback count query
+      const fallbackCountQuery = `
+        SELECT COUNT(*) as total
+        FROM venues v
+        LEFT JOIN users u ON v.owner_id = u.id
+        WHERE ${whereConditions}
+      `;
+
+      try {
+        console.log('Executing fallback count query:', fallbackCountQuery);
+        const [fallbackCountResult] = await pool.execute(fallbackCountQuery, countParams);
+        totalCount = fallbackCountResult[0].total;
+        console.log('Fallback total count:', totalCount);
+      } catch (countError) {
+        console.log('Count query failed, setting total to 0:', countError.message);
+        totalCount = 0;
+      }
+
+      // Fallback data query
+      const fallbackDataQuery = `
         SELECT v.*, u.name as owner_name, u.mobile_number as owner_phone
         FROM venues v
         LEFT JOIN users u ON v.owner_id = u.id
-        WHERE v.status = 'active'
+        WHERE ${whereConditions}
+        ORDER BY v.created_at DESC
+        LIMIT ? OFFSET ?
       `;
 
-      const fallbackParams = [];
-
-      if (location) {
-        fallbackQuery += ' AND v.location LIKE ?';
-        fallbackParams.push(`%${location}%`);
-      }
-
-      if (search) {
-        fallbackQuery += ' AND (v.name LIKE ? OR v.description LIKE ?)';
-        fallbackParams.push(`%${search}%`, `%${search}%`);
-      }
-
-      // Temporarily removed Pune exclusion to debug venue loading
-
-      fallbackQuery += ' ORDER BY v.created_at DESC LIMIT ? OFFSET ?';
-      fallbackParams.push(parseInt(limit), parseInt(offset));
+      const fallbackDataParams = [...params, limitInt, offsetInt];
 
       try {
-        console.log('Executing fallback query:', fallbackQuery);
-        console.log('With fallback params:', fallbackParams);
-        [venues] = await pool.execute(fallbackQuery, fallbackParams);
+        console.log('Executing fallback data query:', fallbackDataQuery);
+        console.log('With fallback data params:', fallbackDataParams);
+        [venues] = await pool.execute(fallbackDataQuery, fallbackDataParams);
         console.log('Fallback query returned venues count:', venues.length);
       } catch (fallbackError) {
-        // If even basic venues table doesn't exist, return empty array
-        console.log('No venues table found, returning empty array. Error:', fallbackError.message);
-        return res.json([]);
+        console.log('No venues table found, returning empty response. Error:', fallbackError.message);
+        return res.json({
+          venues: [],
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: 0,
+            totalCount: 0,
+            limit: limitInt,
+            hasNextPage: false,
+            hasPrevPage: false
+          }
+        });
       }
     }
 
@@ -95,8 +202,32 @@ router.get('/', async (req, res) => {
       priceMax: venue.price_max ? parseFloat(venue.price_max) : null
     }));
 
-    console.log('Sending formatted venues response, count:', formattedVenues.length);
-    res.json(formattedVenues);
+    // Calculate pagination metadata
+    const currentPage = parseInt(page);
+    const totalPages = Math.ceil(totalCount / limitInt);
+    const hasNextPage = currentPage < totalPages;
+    const hasPrevPage = currentPage > 1;
+
+    const response = {
+      venues: formattedVenues,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalCount,
+        limit: limitInt,
+        hasNextPage,
+        hasPrevPage
+      }
+    };
+
+    console.log('Sending paginated response:', {
+      venuesCount: formattedVenues.length,
+      currentPage,
+      totalPages,
+      totalCount
+    });
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching venues:', error);
     res.status(500).json({ error: 'Failed to fetch venues' });

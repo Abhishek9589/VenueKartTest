@@ -77,20 +77,31 @@ class VenueService {
   async getVenues(filters = {}) {
     try {
       const queryParams = new URLSearchParams();
-      
-      if (filters.location) {
-        queryParams.append('location', filters.location);
+
+      // Pagination parameters
+      if (filters.page) {
+        queryParams.append('page', filters.page);
       }
-      
-      if (filters.search) {
-        queryParams.append('search', filters.search);
-      }
-      
+
       if (filters.limit) {
         queryParams.append('limit', filters.limit);
       }
-      
-      if (filters.offset) {
+
+      // Search and filter parameters
+      if (filters.location) {
+        queryParams.append('location', filters.location);
+      }
+
+      if (filters.type) {
+        queryParams.append('type', filters.type);
+      }
+
+      if (filters.search) {
+        queryParams.append('search', filters.search);
+      }
+
+      // Legacy support for offset-based pagination
+      if (filters.offset && !filters.page) {
         queryParams.append('offset', filters.offset);
       }
 
@@ -102,7 +113,32 @@ class VenueService {
         throw new Error(userFriendlyMessage);
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Handle both old and new API response formats
+      if (data.venues && data.pagination) {
+        // New paginated response format
+        return {
+          venues: data.venues,
+          pagination: data.pagination
+        };
+      } else if (Array.isArray(data)) {
+        // Old response format (array of venues) - convert to new format for backward compatibility
+        return {
+          venues: data,
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalCount: data.length,
+            limit: data.length,
+            hasNextPage: false,
+            hasPrevPage: false
+          }
+        };
+      } else {
+        // Unexpected format
+        throw new Error('Unexpected API response format');
+      }
     } catch (error) {
       console.error('Error fetching venues:', error);
       const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
@@ -171,6 +207,23 @@ class VenueService {
       return { message: 'Venue deleted successfully' };
     } catch (error) {
       console.error('Error deleting venue:', error);
+      const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
+      throw new Error(userFriendlyMessage);
+    }
+  }
+
+  async getFilterOptions() {
+    try {
+      const response = await fetch(`${API_BASE}/filter-options`);
+
+      if (!response.ok) {
+        const userFriendlyMessage = getUserFriendlyError('Failed to fetch filter options', 'general');
+        throw new Error(userFriendlyMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
       const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');
       throw new Error(userFriendlyMessage);
     }
