@@ -11,6 +11,7 @@ import notificationService from '../services/notificationService';
 import venueService from '../services/venueService';
 import apiClient from '../lib/apiClient';
 import { getUserFriendlyError } from '../lib/errorMessages';
+import { formatPrice } from '@/lib/priceUtils';
 import {
   Building,
   Home,
@@ -262,7 +263,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Revenue</p>
                 <p className="text-3xl font-bold text-venue-dark">
-                  {loading ? '...' : `₹${dashboardStats.totalRevenue.toLocaleString()}`}
+                  {loading ? '...' : formatPrice(dashboardStats.totalRevenue)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-venue-indigo" />
@@ -311,7 +312,7 @@ export default function AdminDashboard() {
                     <p className="text-sm text-gray-600 ml-10">{inquiry.venue_name} • {new Date(inquiry.event_date).toLocaleDateString()} • {inquiry.guest_count} guests</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-venue-dark mb-2">���{inquiry.amount.toLocaleString()}</p>
+                    <p className="font-semibold text-venue-dark mb-2">{formatPrice(inquiry.amount)}</p>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -368,7 +369,7 @@ export default function AdminDashboard() {
                     <p className="text-sm text-gray-600">{booking.venue_name} • {new Date(booking.event_date).toLocaleDateString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-venue-dark">₹{booking.amount.toLocaleString()}</p>
+                    <p className="font-semibold text-venue-dark">{formatPrice(booking.amount)}</p>
                     <p className={`text-sm ${booking.status === 'confirmed' ? 'text-green-600' : booking.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'}`}>
                       {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                     </p>
@@ -429,7 +430,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-center">
                         <DollarSign className="h-4 w-4 mr-1" />
-                        ₹{venue.price_per_day ? parseFloat(venue.price_per_day).toLocaleString() : 'N/A'}
+                        {venue.price_per_day ? formatPrice(parseFloat(venue.price_per_day)) : 'N/A'}
                       </div>
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1" />
@@ -583,7 +584,7 @@ export default function AdminDashboard() {
                       <td className="p-4">{booking.venue_name}</td>
                       <td className="p-4">{new Date(booking.event_date).toLocaleDateString()}</td>
                       <td className="p-4">{booking.guest_count}</td>
-                      <td className="p-4">₹{booking.amount.toLocaleString()}</td>
+                      <td className="p-4">{formatPrice(booking.amount)}</td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${
@@ -1147,7 +1148,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="text-right">
                               <span className="text-sm font-bold text-venue-indigo">
-                                ₹{inquiry.amount.toLocaleString()}
+                                {formatPrice(inquiry.amount)}
                               </span>
                               <div className="text-xs text-gray-400 mt-1">
                                 {index < 3 && <span className="text-green-500 font-medium">New</span>}

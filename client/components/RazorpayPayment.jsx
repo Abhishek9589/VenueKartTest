@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, CreditCard, CheckCircle, XCircle, Clock } from 'lucide-react';
 import apiClient from '../lib/apiClient';
+import { formatPrice } from '@/lib/priceUtils';
 
 const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
   const [loading, setLoading] = useState(false);
@@ -292,11 +293,11 @@ const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center text-lg font-semibold">
                   <span>Amount to Pay:</span>
-                  <span className="text-venue-purple">₹{booking.payment_amount || booking.amount}</span>
+                  <span className="text-venue-purple">{formatPrice(booking.payment_amount || booking.amount)}</span>
                 </div>
                 {booking.payment_amount && booking.amount !== booking.payment_amount && (
                   <div className="text-xs text-gray-500 mt-1">
-                    Display price: ₹{booking.amount} (includes taxes & fees)
+                    Display price: {formatPrice(booking.amount)} (includes taxes & fees)
                   </div>
                 )}
               </div>
@@ -337,7 +338,7 @@ const RazorpayPayment = ({ booking, onPaymentSuccess, onPaymentFailure }) => {
                   ) : (
                     <>
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Pay ₹{booking.payment_amount || booking.amount}
+                      Pay {formatPrice(booking.payment_amount || booking.amount)}
                     </>
                   )}
                 </Button>

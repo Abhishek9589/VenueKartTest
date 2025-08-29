@@ -66,14 +66,33 @@ export const calculatePriceBreakdown = (basePrice) => {
 };
 
 /**
- * Format price with currency symbol and locale
- * 
+ * Format price with currency symbol and Indian locale
+ *
  * @param {number} price - Price to format
- * @returns {string} Formatted price string
+ * @returns {string} Formatted price string with Indian currency system (xx,xx,xxx)
  */
 export const formatPrice = (price) => {
   if (!price || price <= 0) return '₹0';
-  return `₹${price.toLocaleString('en-IN')}`;
+
+  // Ensure we have a number
+  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+  if (isNaN(numPrice)) return '₹0';
+
+  // Use Indian locale for proper comma formatting (x,xx,xx,xxx)
+  return `₹${numPrice.toLocaleString('en-IN')}`;
+};
+
+/**
+ * Format price range with Indian currency system
+ *
+ * @param {number} minPrice - Minimum price
+ * @param {number} maxPrice - Maximum price
+ * @returns {string} Formatted price range string
+ */
+export const formatPriceRange = (minPrice, maxPrice) => {
+  if (!minPrice && !maxPrice) return '₹0';
+  if (!maxPrice || minPrice === maxPrice) return formatPrice(minPrice);
+  return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
 };
 
 /**

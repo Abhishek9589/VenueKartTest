@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import apiClient from '../lib/apiClient';
+import { formatPrice } from '@/lib/priceUtils';
 import RazorpayPayment from '../components/RazorpayPayment';
 import {
   User,
@@ -332,9 +333,9 @@ export default function UserDashboard() {
                                   </div>
                                   <div>
                                     <Label className="text-sm font-medium">Amount to Pay</Label>
-                                    <p className="text-sm text-gray-600">₹{selectedBooking.payment_amount || selectedBooking.amount}</p>
+                                    <p className="text-sm text-gray-600">{formatPrice(selectedBooking.payment_amount || selectedBooking.amount)}</p>
                                     {selectedBooking.payment_amount && selectedBooking.amount !== selectedBooking.payment_amount && (
-                                      <p className="text-xs text-gray-500 mt-1">Display price: ₹{selectedBooking.amount}</p>
+                                      <p className="text-xs text-gray-500 mt-1">Display price: {formatPrice(selectedBooking.amount)}</p>
                                     )}
                                   </div>
                                   <div>

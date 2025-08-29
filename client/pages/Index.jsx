@@ -112,8 +112,11 @@ export default function Index() {
       setLoading(true);
       const data = await apiCall('/api/venues?limit=3');
 
+      // Extract venues array from API response
+      const venues = data.venues || data;
+
       // Format venues data for display
-      const formattedVenues = data.map(venue => {
+      const formattedVenues = venues.map(venue => {
         const basePrice = parseFloat(venue.price_per_day || venue.price);
         const pricingInfo = getPricingInfo(basePrice, 'listing');
 

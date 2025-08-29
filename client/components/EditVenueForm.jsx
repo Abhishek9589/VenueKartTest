@@ -3,12 +3,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { X, Upload, Plus, Trash2 } from 'lucide-react';
+import { VENUE_TYPES } from '@/constants/venueOptions';
 
 export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
   const [formData, setFormData] = useState({
     venueName: '',
     description: '',
+    venueType: '',
     footfall: '',
     location: '',
     images: [],
@@ -26,6 +29,7 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
       setFormData({
         venueName: venue.name || '',
         description: venue.description || '',
+        venueType: venue.type || '',
         footfall: venue.capacity || '',
         location: venue.location || '',
         images: venue.images || [venue.image || ''],
@@ -198,7 +202,8 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
           images: imageUrls, // Use Cloudinary URLs
           facilities: formData.facilities.filter(f => f.trim()),
           footfall: parseInt(formData.footfall),
-          price: parseInt(formData.price)
+          price: parseInt(formData.price),
+          venueType: formData.venueType
         };
         await onSubmit({ ...venue, ...venueData });
         onClose();
@@ -260,6 +265,23 @@ export default function EditVenueForm({ isOpen, onClose, onSubmit, venue }) {
               />
               {errors.description && (
                 <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+              )}
+            </div>
+
+            {/* Venue Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Venue Type (Optional)
+              </label>
+              <AutocompleteInput
+                options={VENUE_TYPES}
+                value={formData.venueType}
+                onChange={(value) => handleInputChange('venueType', value)}
+                placeholder="Type to search..."
+                className={`w-full ${errors.venueType ? 'border-red-500' : ''}`}
+              />
+              {errors.venueType && (
+                <p className="text-red-500 text-sm mt-1">{errors.venueType}</p>
               )}
             </div>
 

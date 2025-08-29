@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useFavorites } from '../hooks/useFavorites';
+import { formatPrice, formatPriceRange } from '@/lib/priceUtils';
 import {
   MapPin,
   Users,
@@ -148,17 +149,17 @@ export default function Favorites() {
 
                     <div className="flex items-center justify-between">
                       <div className="text-left">
-                        {venue.priceMin && venue.priceMax ? (
+                        {venue.priceMin && venue.priceMax && venue.priceMin !== venue.priceMax ? (
                           <div>
                             <span className="text-xl font-bold text-venue-indigo">
-                              ₹{venue.priceMin.toLocaleString()} - ₹{venue.priceMax.toLocaleString()}
+                              {formatPriceRange(venue.priceMin, venue.priceMax)}
                             </span>
                             <div className="text-sm text-gray-500">per day</div>
                           </div>
                         ) : (
                           <div>
                             <span className="text-xl font-bold text-venue-indigo">
-                              ₹{venue.price.toLocaleString()}
+                              {formatPrice(venue.price)}
                             </span>
                             <div className="text-sm text-gray-500">per day</div>
                           </div>

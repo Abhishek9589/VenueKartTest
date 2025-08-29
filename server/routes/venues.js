@@ -319,7 +319,7 @@ router.get('/owner/my-venues', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const ownerId = req.user.id;
-    const { venueName, description, location, footfall, price, priceMin, priceMax, images, facilities } = req.body;
+    const { venueName, description, location, footfall, price, priceMin, priceMax, images, facilities, venueType } = req.body;
 
     // Handle both single price and price range formats
     let finalPriceMin, finalPriceMax;
@@ -388,12 +388,13 @@ router.post('/', authenticateToken, async (req, res) => {
     await connection.beginTransaction();
 
     try {
-      // Insert venue with price range
+      // Insert venue with price range and type
       const averagePrice = (finalPriceMin + finalPriceMax) / 2;
+      const venueTypeValue = venueType && venueType.trim() ? venueType : 'Venue';
       const [venueResult] = await connection.execute(`
-        INSERT INTO venues (owner_id, name, description, location, capacity, price_per_day, price_min, price_max)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [ownerId, venueName, description, location, parseInt(footfall), averagePrice, finalPriceMin, finalPriceMax]);
+        INSERT INTO venues (owner_id, name, description, type, location, capacity, price_per_day, price_min, price_max)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [ownerId, venueName, description, venueTypeValue, location, parseInt(footfall), averagePrice, finalPriceMin, finalPriceMax]);
 
       const venueId = venueResult.insertId;
 
@@ -455,7 +456,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const ownerId = req.user.id;
-    const { venueName, description, location, footfall, price, priceMin, priceMax, images, facilities } = req.body;
+    const { venueName, description, location, footfall, price, priceMin, priceMax, images, facilities, venueType } = req.body;
 
     // Handle both single price and price range formats
     let finalPriceMin, finalPriceMax;
@@ -490,11 +491,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     try {
       // Update venue
       const averagePrice = finalPriceMin && finalPriceMax ? (finalPriceMin + finalPriceMax) / 2 : null;
+      const venueTypeValue = venueType && venueType.trim() ? venueType : null;
       await connection.execute(`
         UPDATE venues
-        SET name = ?, description = ?, location = ?, capacity = ?, price_per_day = ?, price_min = ?, price_max = ?
+        SET name = ?, description = ?, type = COALESCE(?, type), location = ?, capacity = ?, price_per_day = ?, price_min = ?, price_max = ?
         WHERE id = ?
-      `, [venueName, description, location, footfall, averagePrice, finalPriceMin, finalPriceMax, id]);
+      `, [venueName, description, venueTypeValue, location, footfall, averagePrice, finalPriceMin, finalPriceMax, id]);
       
       // Delete old images and facilities
       await connection.execute('DELETE FROM venue_images WHERE venue_id = ?', [id]);

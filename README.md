@@ -17,7 +17,7 @@ Making event planning effortless with verified venues and transparent pricing.
 ## 🚀 Key Features
 
 ### For Customers
-- **🔍 Smart Search & Discovery**: Advanced filtering by location, capacity, amenities, and price
+- **🔍 Smart Search & Discovery**: Advanced filtering by location, venue type, capacity, amenities, and price
 - **✅ Verified Listings**: All venues thoroughly verified for authenticity and quality
 - **💰 Transparent Pricing**: Clear, upfront pricing with no hidden fees
 - **📱 Real-time Notifications**: Instant updates on booking status via email
@@ -26,7 +26,7 @@ Making event planning effortless with verified venues and transparent pricing.
 - **🔐 Secure Authentication**: OAuth and traditional login options
 
 ### For Venue Owners
-- **🏢 Venue Management**: Complete venue profile creation and editing
+- **🏢 Venue Management**: Complete venue profile creation and editing with venue type selection
 - **📋 Booking Management**: Real-time inquiry handling and booking workflow
 - **📈 Analytics Dashboard**: Revenue tracking and booking statistics
 - **🔔 Notification System**: Instant alerts for new inquiries via email
@@ -40,6 +40,7 @@ Making event planning effortless with verified venues and transparent pricing.
 - **⚡ Real-time Updates**: Live notifications and data synchronization
 - **🎨 Modern UI/UX**: Built with Radix UI and TailwindCSS
 - **📧 Email Integration**: Comprehensive email notification system
+- **🏷️ Smart Categorization**: Venue type-based filtering and display
 
 ## 🛠️ Technology Stack
 
@@ -47,7 +48,7 @@ Making event planning effortless with verified venues and transparent pricing.
 - **React 18** - Modern React with hooks and context
 - **React Router 6** - SPA routing with authentication guards
 - **Vite** - Fast development server and build tool
-- **TailwindCSS 3** - Utility-first CSS framework
+- **TailwindCSS 3** - Utility-first CSS framework with custom VenueKart theme
 - **Radix UI** - Accessible, unstyled UI components
 - **Framer Motion** - Smooth animations and transitions
 - **Lucide React** - Beautiful icon library
@@ -57,7 +58,7 @@ Making event planning effortless with verified venues and transparent pricing.
 ### Backend
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web application framework
-- **MySQL** - Relational database
+- **MySQL** - Relational database with automatic schema management
 - **JWT** - Secure token-based authentication
 - **bcryptjs** - Password hashing
 - **Nodemailer** - Email service integration
@@ -173,12 +174,12 @@ client/
 │   ├── ui/             # Base UI components (buttons, cards, etc.)
 │   ├── Navigation.jsx   # Site navigation
 │   ├── Footer.jsx      # Site footer
-│   ├── AddVenueForm.jsx # Venue creation form
-│   ├── EditVenueForm.jsx # Venue editing form
+│   ├── AddVenueForm.jsx # Venue creation form with type selection
+│   ├── EditVenueForm.jsx # Venue editing form with type updates
 │   └── TokenExpiredNotice.jsx # Token expiration handling
 ├── pages/              # Route components
-│   ├── Index.jsx       # Homepage
-│   ├── Venues.jsx      # Venue listing
+│   ├── Index.jsx       # Homepage with popular venues showcase
+│   ├── Venues.jsx      # Venue listing with type-based filtering
 │   ├── VenueDetail.jsx # Individual venue page
 │   ├── AdminDashboard.jsx # Owner dashboard
 │   ├── UserDashboard.jsx # Customer dashboard
@@ -198,21 +199,24 @@ client/
 │   ├── apiClient.js    # HTTP client with auth
 │   ├── utils.js        # General utilities
 │   ├── navigation.js   # Navigation helpers
+│   ├── priceUtils.js   # Price formatting utilities
 │   └── errorMessages.js # Error handling
 ├── constants/          # Application constants
-│   └── venueOptions.js # Venue types and options
+│   └── venueOptions.js # Venue types and location options
 ├── App.jsx             # Main app component with routing
-└── global.css          # Global styles and theme
+└── global.css          # Global styles and VenueKart theme
 ```
 
 ### Backend Architecture
 ```
 server/
 ├── config/             # Configuration files
-│   └── database.js     # Database setup and schema
+│   ├── database.js     # Database setup and schema
+│   ├── updateBookingsTable.js # Database migrations
+│   └── updateVenuesTable.js   # Venue type column migration
 ├── routes/             # Express route handlers
 │   ├── auth.js         # Authentication endpoints
-│   ├── venues.js       # Venue management endpoints
+│   ├── venues.js       # Venue management with type support
 │   ├── bookings.js     # Booking management endpoints
 │   ├── upload.js       # File upload endpoints
 │   ├── favorites.js    # Favorites endpoints
@@ -253,7 +257,7 @@ server/
 
 ### Core Tables
 - **users**: User profiles, authentication data, and user types
-- **venues**: Venue information, pricing, and metadata
+- **venues**: Venue information, pricing, venue types, and metadata
 - **venue_images**: Venue photo galleries with Cloudinary URLs
 - **venue_facilities**: Venue amenities and features
 - **bookings**: Booking records, inquiries, and status management
@@ -263,7 +267,7 @@ server/
 
 ### Key Relationships
 - Users can be customers or venue owners
-- Venue owners can manage multiple venues
+- Venue owners can manage multiple venues with specific types
 - Venues have multiple images and facilities
 - Bookings link customers to venues with status tracking
 - Favorites create many-to-many relationships between users and venues
@@ -284,11 +288,13 @@ server/
 
 ### Venues (`/api/venues`)
 - `GET /` - List all venues with filtering and pagination
+- `GET /filter-options` - Get available venue types and locations from database
 - `GET /:id` - Get venue details with images and facilities
-- `POST /` - Create new venue (venue owners only)
-- `PUT /:id` - Update venue (venue owners only)
+- `POST /` - Create new venue with type selection (venue owners only)
+- `PUT /:id` - Update venue including type (venue owners only)
 - `DELETE /:id` - Delete venue (venue owners only)
 - `GET /owner/my-venues` - Get owner's venues
+- `GET /owner/dashboard-stats` - Get owner analytics
 
 ### Bookings (`/api/bookings`)
 - `POST /` - Create booking inquiry
@@ -304,7 +310,7 @@ server/
 
 ## 🎨 Design System
 
-### Color Palette
+### VenueKart Brand Colors
 - **Primary**: Venue Indigo (`#3C3B6E`) - Main brand color
 - **Secondary**: Venue Purple (`#6C63FF`) - Accent and hover states
 - **Accent**: Venue Lavender (`#E6E6FA`) - Light backgrounds
@@ -316,7 +322,7 @@ server/
 
 ### Component Library
 Built on Radix UI primitives with custom VenueKart styling:
-- **Form Controls**: Button, Input, Select, Textarea, Checkbox
+- **Form Controls**: Button, Input, Select, Textarea, Checkbox, AutocompleteInput
 - **Data Display**: Card, Badge, Avatar, Table
 - **Feedback**: Alert, Toast, Dialog, Tooltip
 - **Navigation**: Tabs, Breadcrumb, Menu, Pagination
@@ -325,6 +331,7 @@ Built on Radix UI primitives with custom VenueKart styling:
 
 ### Smart Search & Discovery
 - **Location-based Search**: City, area, and landmark filtering
+- **Venue Type Filtering**: Banquet halls, hotels & resorts, farmhouses, etc.
 - **Capacity Filtering**: Guest count requirements
 - **Amenity Filtering**: Multiple facility selection
 - **Price Range Filtering**: Budget-based venue discovery
@@ -332,6 +339,7 @@ Built on Radix UI primitives with custom VenueKart styling:
 
 ### Venue Management System
 - **Complete CRUD Operations**: Create, read, update, delete venues
+- **Venue Type Selection**: Choose from predefined categories during creation/editing
 - **Image Gallery Management**: Multiple image upload with Cloudinary
 - **Facility Management**: Add/remove venue amenities
 - **Pricing Configuration**: Flexible pricing structure
@@ -355,6 +363,31 @@ Built on Radix UI primitives with custom VenueKart styling:
 - **Multiple Upload**: Support for venue image galleries
 - **Auto-optimization**: Automatic image compression and formatting
 - **Responsive Images**: Multiple sizes for different devices
+
+## 🐛 Recent Bug Fixes & Improvements
+
+### Homepage Data Loading Fix
+- Fixed "TypeError: data.map is not a function" on homepage
+- Updated API response handling to properly extract venues array
+- Improved error handling with fallback venue data
+
+### Venue Type System
+- Implemented complete venue type functionality
+- Added venue type saving to database during venue creation
+- Enhanced venue type display in venue cards and badges
+- Fixed venue type filtering system
+
+### Form Enhancements
+- Added venue type selection to AddVenueForm
+- Implemented venue type editing in EditVenueForm
+- Improved form validation and error handling
+- Enhanced image upload with progress indicators
+
+### Database Improvements
+- Added automatic venue type column migration
+- Implemented venue type inference for existing venues
+- Enhanced database indexing for better performance
+- Added proper foreign key constraints
 
 ## 🚀 Deployment
 
@@ -392,6 +425,7 @@ docker run -p 8080:8080 venuekart
 - Add tests for new features
 - Update documentation for API changes
 - Ensure all tests pass before submitting PR
+- Test venue type functionality thoroughly
 
 ## 📄 License
 
