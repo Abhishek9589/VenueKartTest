@@ -353,6 +353,16 @@ const formattedVenues = venues.map(venue => { ... });
 **Feature**: Filter dropdowns now populate from actual database content instead of static arrays.
 **Implementation**: New endpoint `/api/venues/filter-options` returns unique venue types and locations from uploaded venues.
 
+### 5. Hero Search Autocomplete (Homepage)
+**Feature**: Homepage hero search now uses dropdown autocomplete for Location and Venue Type, mirroring filter behavior.
+**Implementation**: Leveraged `AutocompleteInput` with options from `/api/venues/filter-options`; independent fields navigate to `/venues` with `location` and/or `type` query params.
+**Files Modified**: `client/pages/Index.jsx`
+
+### 6. Contact Form via Web3Forms
+**Feature**: Contact page now submits via Web3Forms with success/error states.
+**Implementation**: Integrated POST to `https://api.web3forms.com/submit` with provided access key; shows live status and resets on success.
+**Files Modified**: `client/pages/Contact.jsx`
+
 ## Venue Type Categories
 
 The platform supports the following venue types:

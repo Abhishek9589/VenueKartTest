@@ -98,49 +98,32 @@ const faqs = [
 export default function Contact() {
   const [result, setResult] = React.useState("");
 
-  const onSubmit = (event) => {
+  const onSubmit = async (event) => {
     event.preventDefault();
+    setResult("Sending....");
 
-    const formData = new FormData(event.target);
-    const name = formData.get("name");
-    const email = formData.get("email");
-    const phone = formData.get("phone");
-    const subject = formData.get("subject");
-    const message = formData.get("message");
+    try {
+      const formData = new FormData(event.target);
+      formData.append("access_key", "509ded59-87b7-4ef7-9084-a4401587ed0a");
 
-    // Construct the email body
-    const emailBody = `
-Hi,
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formData
+      });
 
-I am reaching out through the VenueKart contact form.
+      const data = await response.json();
 
-Name: ${name}
-Email: ${email}
-Phone: ${phone || 'Not provided'}
-
-Subject: ${subject}
-
-Message:
-${message}
-
-Best regards,
-${name}
-    `.trim();
-
-    // Create mailto link
-    const mailtoLink = `mailto:support@venuekart.in?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-
-    // Open email client
-    window.location.href = mailtoLink;
-
-    // Show success message
-    setResult("Opening your email client with the message pre-filled. Just click send!");
-
-    // Reset form after a brief delay
-    setTimeout(() => {
-      event.target.reset();
-      setResult("");
-    }, 3000);
+      if (data.success) {
+        setResult("Form Submitted Successfully");
+        event.target.reset();
+      } else {
+        console.log("Error", data);
+        setResult(data.message || "Submission failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Submission error", err);
+      setResult("Something went wrong. Please try again.");
+    }
   };
 
   return (

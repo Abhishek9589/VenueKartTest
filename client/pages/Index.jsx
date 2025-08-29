@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
+import venueService from '../services/venueService';
+import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserFriendlyError } from '../lib/errorMessages';
@@ -92,6 +95,9 @@ export default function Index() {
   const [searchVenue, setSearchVenue] = useState('');
   const [popularVenues, setPopularVenues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
+  const [venueTypes, setVenueTypes] = useState([]);
+  const [locations, setLocations] = useState([]);
   const { toggleFavorite, isFavorite } = useFavorites();
   const { isLoggedIn } = useAuth();
 
@@ -105,6 +111,7 @@ export default function Index() {
 
   useEffect(() => {
     loadPopularVenues();
+    loadFilterOptions();
   }, []);
 
   const loadPopularVenues = async () => {
@@ -171,11 +178,25 @@ export default function Index() {
   };
 
   const handleSearch = () => {
-    // Navigate to venues page with search params
     const params = new URLSearchParams();
     if (searchLocation) params.set('location', searchLocation);
-    if (searchVenue) params.set('venue', searchVenue);
+    if (searchVenue) params.set('type', searchVenue);
     window.location.href = `/venues?${params.toString()}`;
+  };
+
+  const loadFilterOptions = async () => {
+    try {
+      setFilterOptionsLoading(true);
+      const options = await venueService.getFilterOptions();
+      setVenueTypes(options.venueTypes || []);
+      setLocations(options.locations || []);
+    } catch (error) {
+      console.error('Error loading filter options:', error);
+      setVenueTypes(VENUE_TYPES);
+      setLocations(PUNE_AREAS);
+    } finally {
+      setFilterOptionsLoading(false);
+    }
   };
 
   return (
@@ -219,37 +240,44 @@ export default function Index() {
               transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
               className="max-w-4xl mx-auto"
             >
-              <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-100">
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
+                className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-100"
+              >
                 <div className="flex flex-col lg:flex-row gap-4 items-center">
                   <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
                     <div className="relative flex-1">
-                      <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-venue-indigo" />
-                      <Input
-                        placeholder="Search city or area"
+                      <MapPin className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-venue-indigo" />
+                      <AutocompleteInput
+                        options={filterOptionsLoading ? ['Loading...'] : locations}
                         value={searchLocation}
-                        onChange={(e) => setSearchLocation(e.target.value)}
+                        onChange={setSearchLocation}
+                        placeholder={filterOptionsLoading ? 'Loading...' : 'Search city or area'}
+                        disabled={filterOptionsLoading}
                         className="pl-12 h-12 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
                       />
                     </div>
                     <div className="relative flex-1">
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-venue-indigo" />
-                      <Input
-                        placeholder="Select venue type"
+                      <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-venue-indigo" />
+                      <AutocompleteInput
+                        options={filterOptionsLoading ? ['Loading...'] : venueTypes}
                         value={searchVenue}
-                        onChange={(e) => setSearchVenue(e.target.value)}
+                        onChange={setSearchVenue}
+                        placeholder={filterOptionsLoading ? 'Loading...' : 'Select venue type'}
+                        disabled={filterOptionsLoading}
                         className="pl-12 h-12 border-2 border-gray-200 focus:border-venue-indigo bg-white rounded-xl text-gray-700 placeholder:text-gray-400 font-medium transition-all duration-200 hover:border-venue-purple focus:ring-2 focus:ring-venue-indigo/20"
                       />
                     </div>
                   </div>
                   <Button
-                    onClick={handleSearch}
+                    type="submit"
                     className="h-12 px-8 bg-venue-indigo hover:bg-venue-purple text-white font-semibold whitespace-nowrap rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[120px]"
                   >
                     <Search className="h-5 w-5 mr-2" />
                     Search
                   </Button>
                 </div>
-              </div>
+              </form>
             </motion.div>
           </div>
         </div>
