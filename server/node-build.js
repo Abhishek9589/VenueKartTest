@@ -1,4 +1,4 @@
-
+import express from "express";
 import { createServer } from "./index.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 
 function serveStatic(app) {
   const staticDir = join(__dirname, "../spa");
+  const assetsDir = join(staticDir, "assets");
   const indexPath = join(staticDir, "index.html");
 
   let indexTemplate;
@@ -19,22 +20,23 @@ function serveStatic(app) {
     return;
   }
 
-  app.use("/assets", (req, res, next) => {
-    res.header("Cache-Control", "public, max-age=31536000, immutable");
-    next();
-  });
+  // Serve hashed assets with long cache headers
+  app.use(
+    "/assets",
+    express.static(assetsDir, {
+      immutable: true,
+      maxAge: "1y",
+    })
+  );
 
-  app.use((req, res, next) => {
-    if (req.path.startsWith("/api/")) {
-      return next();
-    }
+  // Serve other static files (e.g., robots.txt, icons)
+  app.use(express.static(staticDir));
 
-    if (req.path === "/" || !req.path.includes(".")) {
-      res.header("Content-Type", "text/html");
-      res.send(indexTemplate);
-    } else {
-      next();
-    }
+  // SPA fallback for non-API routes
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/")) return next();
+    if (req.method !== "GET") return next();
+    res.type("html").send(indexTemplate);
   });
 }
 

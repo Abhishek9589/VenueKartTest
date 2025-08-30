@@ -46,7 +46,7 @@ const contactInfo = [
   },
   {
     title: "Visit Us",
-    description: "VenueKart (Virtues Seven Events Pvt. Ltd.)",
+    description: "VenueKart (Virtues 7 Events Pvt. Ltd.)",
     value: "Pune, Maharashtra, India",
     icon: MapPin,
     link: null
