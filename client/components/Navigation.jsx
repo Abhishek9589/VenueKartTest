@@ -142,7 +142,7 @@ export default function Navigation() {
                     </Link>
                   </Button>
                 )}
-                <Button onClick={handleLogout} variant="ghost" className="text-venue-indigo hover:text-venue-purple">
+                <Button onClick={handleLogout} variant="ghost" className="text-venue-indigo hover:bg-venue-indigo hover:text-white active:bg-venue-indigo/90 active:text-white">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
@@ -236,7 +236,7 @@ export default function Navigation() {
                         </Link>
                       </Button>
                     )}
-                    <Button onClick={handleLogout} variant="ghost" className="w-full text-venue-indigo hover:text-venue-purple">
+                    <Button onClick={handleLogout} variant="ghost" className="w-full text-venue-indigo hover:bg-venue-indigo hover:text-white active:bg-venue-indigo/90 active:text-white">
                       <LogOut className="h-4 w-4 mr-2" />
                       Logout
                     </Button>
