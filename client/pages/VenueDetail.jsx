@@ -29,6 +29,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 
+import apiClient from '../lib/apiClient.js';
+
 // API service functions
 const getAuthHeader = () => {
   const token = localStorage.getItem('accessToken');
@@ -36,21 +38,10 @@ const getAuthHeader = () => {
 };
 
 const apiCall = async (url, options = {}) => {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(),
-      ...options.headers
-    }
-  });
-
-  if (!response.ok) {
-    const userFriendlyMessage = getUserFriendlyError(`API call failed: ${response.statusText}`, 'general');
-    throw new Error(userFriendlyMessage);
+  if (!options.method || options.method.toUpperCase() === 'GET') {
+    return apiClient.getJson(url, options);
   }
-
-  return response.json();
+  return apiClient.callJson(url, options);
 };
 
 export default function VenueDetail() {

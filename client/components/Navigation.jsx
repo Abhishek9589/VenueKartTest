@@ -6,7 +6,9 @@ import { Button } from './ui/button';
 import { Menu, X, MapPin, LogOut, User, Building, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-// API service functions
+import apiClient from '../lib/apiClient.js';
+
+// API service wrapper
 const getAuthHeader = () => {
   const token = localStorage.getItem('accessToken');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -14,30 +16,10 @@ const getAuthHeader = () => {
 
 const apiCall = async (url, options = {}) => {
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-        ...options.headers
-      }
-    });
-
-    // Read response body once
-    let data = null;
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      console.error('Failed to parse response as JSON:', jsonError);
-      data = null;
+    if (!options.method || options.method.toUpperCase() === 'GET') {
+      return await apiClient.getJson(url, options);
     }
-
-    if (!response.ok) {
-      const errorMessage = data && data.error ? data.error : 'Request failed';
-      throw new Error(errorMessage);
-    }
-
-    return data;
+    return await apiClient.callJson(url, options);
   } catch (error) {
     console.error('API call error:', error);
     throw error;
@@ -142,7 +124,7 @@ export default function Navigation() {
                     </Link>
                   </Button>
                 )}
-                <Button onClick={handleLogout} variant="ghost" className="text-venue-indigo hover:bg-venue-indigo hover:text-white active:bg-venue-indigo/90 active:text-white">
+                <Button onClick={handleLogout} variant="ghost" className="text-venue-indigo hover:text-venue-purple">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
@@ -236,7 +218,7 @@ export default function Navigation() {
                         </Link>
                       </Button>
                     )}
-                    <Button onClick={handleLogout} variant="ghost" className="w-full text-venue-indigo hover:bg-venue-indigo hover:text-white active:bg-venue-indigo/90 active:text-white">
+                    <Button onClick={handleLogout} variant="ghost" className="w-full text-venue-indigo hover:text-venue-purple">
                       <LogOut className="h-4 w-4 mr-2" />
                       Logout
                     </Button>

@@ -47,7 +47,7 @@ class VenueService {
         formData.append('file', image.file);
         formData.append('folder', 'venues');
 
-        const response = await fetch('/api/upload', {
+        const response = await apiClient.call('/api/upload', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -106,14 +106,7 @@ class VenueService {
       }
 
       const url = `${API_BASE}?${queryParams.toString()}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        const userFriendlyMessage = getUserFriendlyError('Failed to fetch venues', 'general');
-        throw new Error(userFriendlyMessage);
-      }
-
-      const data = await response.json();
+      const data = await apiClient.getJson(url);
 
       // Handle both old and new API response formats
       if (data.venues && data.pagination) {
@@ -148,14 +141,7 @@ class VenueService {
 
   async getVenueById(id) {
     try {
-      const response = await fetch(`${API_BASE}/${id}`);
-
-      if (!response.ok) {
-        const userFriendlyMessage = getUserFriendlyError('Failed to fetch venue', 'general');
-        throw new Error(userFriendlyMessage);
-      }
-
-      return await response.json();
+      return await apiClient.getJson(`${API_BASE}/${id}`);
     } catch (error) {
       console.error('Error fetching venue:', error);
       const userFriendlyMessage = getUserFriendlyError(error.message || error, 'general');

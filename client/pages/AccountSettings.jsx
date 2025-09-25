@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import apiClient from '../lib/apiClient.js';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft,
@@ -137,22 +138,10 @@ export default function AccountSettings() {
     try {
       setLoading(true);
       
-      const response = await fetch('/api/auth/update-profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({
-          ...profileData,
-          mobileNumber: profileData.phone
-        })
+      await apiClient.putJson('/api/auth/update-profile', {
+        ...profileData,
+        mobileNumber: profileData.phone
       });
-
-      if (!response.ok) {
-        const userFriendlyMessage = getUserFriendlyError('Failed to update profile', 'general');
-        throw new Error(userFriendlyMessage);
-      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -179,22 +168,10 @@ export default function AccountSettings() {
     try {
       setLoading(true);
       
-      const response = await fetch('/api/auth/change-password', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        })
+      await apiClient.putJson('/api/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to change password');
-      }
 
       // Clear password form
       setPasswordData({

@@ -143,7 +143,8 @@ class AuthService {
       const top = window.innerHeight / 2 - height / 2;
 
       // Include userType as a query parameter
-      const authUrl = `${API_BASE}/google?userType=${encodeURIComponent(userType)}`;
+      const base = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
+      const authUrl = `${base}${API_BASE}/google?userType=${encodeURIComponent(userType)}`;
 
       const popup = window.open(
         authUrl,

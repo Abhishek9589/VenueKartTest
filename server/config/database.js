@@ -23,6 +23,11 @@ import { addVenueTypeColumn } from './updateVenuesTable.js';
 // Initialize database tables
 export async function initializeDatabase() {
   try {
+    if (!process.env.DB_HOST || process.env.DB_HOST.includes('your-db-host')) {
+      console.warn('DB_HOST not configured — skipping database initialization. Set DB_HOST to enable DB features.');
+      return;
+    }
+
     console.log('Starting database initialization...');
 
     // Users table

@@ -69,7 +69,7 @@ export default function About() {
               Who We Are
             </h2>
             <p className="text-gray-600 text-lg leading-relaxed">
-              Founded under <span className="font-semibold text-venue-indigo">Virtues 7 Events Pvt. Ltd.</span>, VenueKart brings together societies, malls, IT parks, and open spaces into one easy-to-use digital marketplace. Whether you're hosting a wedding, a corporate activation, a community gathering, or a brand promotion, VenueKart ensures that you discover, book, and manage venues with just a few clicks.
+              Founded under <span className="font-semibold text-venue-indigo">Virtues Seven Events Pvt. Ltd.</span>, VenueKart brings together societies, malls, IT parks, and open spaces into one easy-to-use digital marketplace. Whether you're hosting a wedding, a corporate activation, a community gathering, or a brand promotion, VenueKart ensures that you discover, book, and manage venues with just a few clicks.
             </p>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { scrollToTop } from '@/lib/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import apiClient from '../lib/apiClient.js';
 import { useFavorites } from '../hooks/useFavorites';
 import { formatPrice, formatPriceRange } from '@/lib/priceUtils';
 import {
@@ -21,17 +22,8 @@ export default function Favorites() {
   const loadFavorites = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/favorites', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFavorites(data);
-      }
+      const data = await apiClient.getJson('/api/favorites');
+      setFavorites(data);
     } catch (error) {
       console.error('Error loading favorites:', error);
     } finally {

@@ -2,9 +2,21 @@ import { getUserFriendlyError } from './errorMessages.js';
 
 class ApiClient {
   constructor() {
-    this.baseURL = '';
+    const envBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ? import.meta.env.VITE_BACKEND_URL : '';
+    this.baseURL = (envBase || '').replace(/\/+$/, '');
     this.isRefreshing = false;
     this.failedQueue = [];
+  }
+
+  resolveUrl(url) {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    // Always use same-origin for API routes so dev proxy and prod SPA work without hardcoding
+    if (url.startsWith('/api')) return url;
+    const base = this.baseURL || '';
+    if (!base) return url;
+    if (url.startsWith('/')) return `${base}${url}`;
+    return `${base}/${url}`;
   }
 
   // Process failed requests queue after token refresh
@@ -54,7 +66,7 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch('/api/auth/refresh', {
+      const response = await fetch(this.resolveUrl('/api/auth/refresh'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,10 +118,14 @@ class ApiClient {
     const { accessToken } = this.getTokens();
     
     // Prepare headers
+    const isFormData = options && options.body instanceof FormData;
     const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers || {}),
     };
+
+    if (!isFormData && !('Content-Type' in headers)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     // Add authorization header if token exists
     if (accessToken) {
@@ -118,7 +134,7 @@ class ApiClient {
 
     try {
       // Make initial request
-      const response = await fetch(url, {
+      const response = await fetch(this.resolveUrl(url), {
         ...options,
         headers,
       });
@@ -170,7 +186,7 @@ class ApiClient {
         Authorization: `Bearer ${newAccessToken}`,
       };
 
-      return fetch(originalUrl, {
+      return fetch(this.resolveUrl(originalUrl), {
         ...originalOptions,
         headers,
       });
@@ -225,7 +241,7 @@ class ApiClient {
 
     try {
       // Make the fetch request directly
-      const response = await fetch(url, {
+      const response = await fetch(this.resolveUrl(url), {
         ...options,
         headers,
       });
@@ -271,7 +287,7 @@ class ApiClient {
             Authorization: `Bearer ${newAccessToken}`,
           };
 
-          const retryResponse = await fetch(url, {
+          const retryResponse = await fetch(this.resolveUrl(url), {
             ...options,
             headers: retryHeaders,
           });
@@ -324,12 +340,12 @@ class ApiClient {
       return responseData;
 
     } catch (error) {
-      console.error('API callJson error details:', {
+      console.error('API callJson error details: ' + JSON.stringify({
         message: error.message,
         stack: error.stack,
         url,
         options
-      });
+      }, null, 2));
 
       // If it's already a user-friendly error, don't wrap it again
       if (error.message && (

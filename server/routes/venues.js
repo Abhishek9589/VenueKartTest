@@ -6,6 +6,16 @@ const router = Router();
 
 // Get filter options based on uploaded venue data (public)
 router.get('/filter-options', async (req, res) => {
+  const dbNotConfigured = !process.env.DB_HOST || process.env.DB_HOST.includes('your-db-host');
+  if (dbNotConfigured) {
+    const fallback = {
+      venueTypes: ['Banquet halls','Hotels & resorts','Lawns/gardens','Farmhouses','Restaurants & cafes','Lounges & rooftops','Stadiums & arenas','Open grounds','Auditoriums'],
+      locations: [],
+      priceRange: { min: 0, max: 500000 },
+      capacityRange: { min: 0, max: 5000 }
+    };
+    return res.json(fallback);
+  }
   try {
     console.log('Fetching filter options from uploaded venues...');
 
@@ -66,6 +76,22 @@ router.get('/filter-options', async (req, res) => {
 
 // Get all venues (public)
 router.get('/', async (req, res) => {
+  const dbNotConfigured = !process.env.DB_HOST || process.env.DB_HOST.includes('your-db-host');
+  if (dbNotConfigured) {
+    const limitInt = parseInt(req.query.limit || '20');
+    const currentPage = parseInt(req.query.page || '1');
+    return res.json({
+      venues: [],
+      pagination: {
+        currentPage,
+        totalPages: 0,
+        totalCount: 0,
+        limit: limitInt,
+        hasNextPage: false,
+        hasPrevPage: false
+      }
+    });
+  }
   try {
     const { location, search, type, limit = 20, offset = 0, page = 1 } = req.query;
     const limitInt = parseInt(limit);

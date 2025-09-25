@@ -7,6 +7,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { X, Upload, Plus, Trash2 } from 'lucide-react';
 import { PUNE_AREAS, VENUE_TYPES } from '@/constants/venueOptions';
 import { getUserFriendlyError } from '@/lib/errorMessages';
+import apiClient from '../lib/apiClient.js';
 
 export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -178,29 +179,13 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
         }));
 
         try {
-          const response = await fetch('/api/upload/image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-            },
-            body: JSON.stringify({
-              imageData: imageDataArray[i],
-              folder: 'venuekart/venues'
-            })
+          const data = await apiClient.postJson('/api/upload/image', {
+            imageData: imageDataArray[i],
+            folder: 'venuekart/venues'
           });
 
-          if (!response.ok) {
-            let errorMessage = `Failed to upload image ${i + 1}: ${response.status}`;
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorMessage;
-            } catch (jsonError) {
-              errorMessage = `${errorMessage} - ${response.statusText}`;
-            }
-            console.error('Image upload failed:', errorMessage);
-
-            // Continue with other images instead of failing completely
+          if (!data || !data.url) {
+            console.error('Image upload failed: invalid response');
             setErrors(prev => ({
               ...prev,
               images: `Warning: Failed to upload image ${i + 1}. Continuing with others...`
@@ -208,7 +193,6 @@ export default function AddVenueForm({ isOpen, onClose, onSubmit }) {
             continue;
           }
 
-          const data = await response.json();
           uploadedUrls.push(data.url);
 
         } catch (imageError) {

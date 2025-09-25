@@ -28,22 +28,14 @@ import {
   Globe
 } from 'lucide-react';
 
-// API service functions
+import apiClient from '../lib/apiClient.js';
+
+// API service wrapper that respects VITE_BACKEND_URL
 const apiCall = async (url, options = {}) => {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  });
-
-  if (!response.ok) {
-    const userFriendlyMessage = getUserFriendlyError(`API call failed: ${response.statusText}`, 'general');
-    throw new Error(userFriendlyMessage);
+  if (!options.method || options.method.toUpperCase() === 'GET') {
+    return apiClient.getJson(url, options);
   }
-
-  return response.json();
+  return apiClient.callJson(url, options);
 };
 
 const howItWorks = [
