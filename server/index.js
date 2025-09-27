@@ -20,6 +20,9 @@ export function createServer() {
   // Initialize database
   initializeDatabase();
 
+  // Trust reverse proxy (ALB/Nginx) for secure cookies and correct IPs
+  app.set("trust proxy", 1);
+
   // Middleware
   const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:8080')
     .split(',')
@@ -43,7 +46,10 @@ export function createServer() {
     secret: process.env.COOKIE_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // Set to true in production with HTTPS
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    }
   }));
 
   // Passport middleware

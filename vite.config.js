@@ -10,6 +10,10 @@ export default defineConfig({
       "@shared": path.resolve(process.cwd(), "./shared"),
     },
   },
+  build: {
+    outDir: "dist/spa",
+    emptyOutDir: true,
+  },
   server: {
     host: "0.0.0.0",
     port: 8080,

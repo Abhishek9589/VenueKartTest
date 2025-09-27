@@ -17,6 +17,7 @@
     "build:server": "vite build --config vite.config.server.js",
     "vercel-build": "npm run build:client",
     "start": "node dist/server/node-build.mjs",
+    "build:export": "npm run build && node scripts/assemble-build.mjs",
     "test": "vitest --run",
     "format.fix": "prettier --write .",
     "dev:client": "vite",
